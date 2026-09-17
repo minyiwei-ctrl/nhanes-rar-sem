@@ -1,0 +1,163 @@
+TITLE:
+    S3 cognition: exposure RA (relative amplitude) -> (BA_ADV, SII_LOG) -> COG,
+    adults aged 60 and over; same specification as m_cog_old_ra.inp. Latent COG measured by MEM_Z FLUEN_Z SPEED_Z (z-standardised within the 60+
+    sample, raw 0 set to missing); loadings free, structural residual variance of
+    COG fixed at 1 (COG@1). SUBPOPULATION = AGE60 EQ 1. Every regression adjusts for AGE SEX BMI EDU WEAR_T SLEEP_H; residual
+    covariance BA_ADV WITH SII_LOG. TYPE = COMPLEX (WT4YR, STRATUM, PSU), MLR,
+    missing dependent variables by FIML, delta-method intervals (CINTERVAL),
+    TECH3 retained.
+
+DATA:
+    FILE = ../../data/mplus/nhanes_sem.dat;
+
+VARIABLE:
+    NAMES =
+        
+        SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
+        COG_Z MEM_Z FLUEN_Z SPEED_Z AGE SEX BMI EDU WEAR_T
+        SLEEP_H VOLUME AGE60 IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM
+        PSU;
+
+    USEVARIABLES =
+        RA BA_ADV SII_LOG
+        MEM_Z FLUEN_Z SPEED_Z
+        AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    MISSING = ALL(-9999);
+
+    ! Subpopulation defined by DESIGN eligibility, not by outcome missingness.
+    ! NHANES 2011-2014 administers the cognitive battery to participants aged 60
+    ! and over; AGE60 marks that group.
+    !
+    ! This replaces SUBPOPULATION = COG_Z NE -9999. A survey subpopulation must
+    ! be a design characteristic: defining it by which observations happen to
+    ! have data makes the target population data-dependent, so the design-based
+    ! variance no longer estimates the variance for any well-defined group. The
+    ! old definition also forced complete data on all three cognitive indicators,
+    ! which defeats the purpose of using a latent factor -- FIML can estimate the
+    ! factor from participants with only one or two indicators.
+    !
+    ! Measured on nhanes_sem.dat. Among participants who are 60+, have a valid
+    ! IV and complete covariates (n = 2,929):
+    !     all three cognitive indicators present : 2,549   <- old rule's n
+    !     at least one indicator present         : 2,732
+    ! Switching to a design-defined subpopulation and letting FIML handle the
+    ! indicators therefore recovers 183 participants, 2,549 -> 2,732.
+    !
+    ! For the record, one claim made when this change was proposed was WRONG and
+    ! is retracted here: the old rule did NOT admit anyone under 60. Zero
+    ! participants with COG_Z observed are below 60. That error came from
+    ! back-transforming the standardised AGE with the wrong constants (the
+    ! .dat uses mean 49.3414, sd 17.4901 -- the analytic universe -- not the
+    ! all-adult mean). Under the correct constants z(60) = 0.6094, which matches
+    ! the observed AGE60 = 1 minimum exactly. The change is justified by the
+    ! design-vs-missingness principle and by the 183 recovered participants,
+    ! not by an age-boundary problem that does not exist.
+    SUBPOPULATION = AGE60 EQ 1;
+
+    IDVARIABLE = SEQN;
+
+    STRATIFICATION = STRATUM;
+    CLUSTER        = PSU;
+    WEIGHT         = WT4YR;
+
+ANALYSIS:
+    TYPE        = COMPLEX;
+    ESTIMATOR   = MLR;
+    INFORMATION = OBSERVED;
+    STARTS      = 20;
+
+MODEL:
+    ! Measurement model: latent cognition factor with three indicators.
+    ! Free all three loadings (asterisks) and fix the factor variance to 1
+    ! (variance-scaling identification).
+    COG BY MEM_Z*   (l1)
+           FLUEN_Z* (l2)
+           SPEED_Z* (l3);
+    COG@1;
+
+    ! a-paths: IV -> each mediator, adjusted for covariates.
+    ! WEAR_T is included here. It was previously omitted from the two mediator
+    ! equations with the note "parameter-count budget", which left this model
+    ! non-comparable with M1_depression: the a-paths were adjusted for different
+    ! covariate sets, so any difference in a1 between the two models confounded
+    ! sample with specification. Two extra parameters in a 35-parameter model
+    ! at n = 2,549 is not a budget constraint. The covariate set is now
+    ! identical across both outcomes.
+    BA_ADV  ON RA (a1)
+               AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    SII_LOG ON RA (a2)
+               AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    ! Outcome equation on the latent factor (WEAR_T retained here).
+    COG ON RA       (cp)
+           BA_ADV   (b1)
+           SII_LOG  (b2)
+           AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    ! Residual covariance between the two mediators.
+    BA_ADV WITH SII_LOG;
+
+MODEL INDIRECT:
+    COG IND RA;
+    COG IND BA_ADV RA;
+    COG IND SII_LOG RA;
+
+MODEL CONSTRAINT:
+    ! prop_BA and prop_SII divide an indirect effect by the total effect. That
+    ! ratio is only interpretable when the total effect is distinguishable from
+    ! zero. When it is not, the denominator is near zero, the ratio is unstable
+    ! and its confidence interval is uninformative -- in the first corrected run
+    ! the cognition model returned prop_BA = 0.411 with a 95% CI of 0.007 to
+    ! 0.815 against a total effect of p = 0.062, and the depression model
+    ! returned a NEGATIVE proportion against a null total effect.
+    ! These quantities are computed here but must NOT be reported unless the
+    ! total effect is significant. Script 10 enforces that rule.
+    ! A significant indirect effect with a null total effect is not a
+    ! contradiction and remains reportable on its own (Zhao, Lynch & Chen 2010;
+    ! Rucker et al. 2011); it is only the PROPORTION that breaks down.
+    NEW(ind_BA ind_SII total_ind prop_BA prop_SII total);
+
+    ! Fix the ORIENTATION of the latent factor.
+    !
+    ! With variance-scaling identification (COG@1) and all loadings free, the
+    ! factor is identified only up to sign: the solution with all loadings
+    ! negated fits identically. With STARTS = 20 the optimiser can return either.
+    ! It did: S2_cognition_ivquint converged to loadings -0.645/-0.643/-0.848
+    ! where M1_cognition gave +0.645/+0.643/+0.848, so every coefficient
+    ! involving COG appeared with the opposite sign. Read literally, that output
+    ! says more rest-activity fragmentation predicts BETTER cognition.
+    !
+    ! Constraining the first loading positive fixes the factor to mean cognitive
+    ! ABILITY (higher = better) in every run. The constraint is non-binding for
+    ! a correctly oriented solution, so it does not change estimates.
+    l1 > 0;
+    ind_BA    = a1 * b1;
+    ind_SII   = a2 * b2;
+    total_ind = ind_BA + ind_SII;
+    total     = cp + total_ind;
+    prop_BA   = ind_BA  / total;
+    prop_SII  = ind_SII / total;
+
+OUTPUT:
+    ! CINTERVAL yields DELTA-METHOD confidence intervals for the indirect
+    ! effects. The delta method assumes the product a*b is normally distributed,
+    ! which is known to be poor for mediation, especially in the tails.
+    ! Bootstrap is unavailable here: Mplus does not permit BOOTSTRAP with
+    ! TYPE = COMPLEX and sampling weights. TECH3 is saved below precisely so
+    ! that Monte Carlo confidence intervals can be constructed post hoc from the
+    ! parameter estimates and their asymptotic covariance matrix, which is the
+    ! standard remedy (MacKinnon, Lockwood & Williams 2004; Preacher & Selig
+    ! 2012). Report Monte Carlo intervals for the indirect effects; the delta
+    ! intervals below are retained for comparison only.
+OUTPUT:
+    STDYX
+    CINTERVAL
+    TECH1
+    TECH3
+    SVALUES;
+
+SAVEDATA:
+    RESULTS = S3_ra_cognition_results.dat;
+    TECH3   = S3_ra_cognition_tech3.dat;

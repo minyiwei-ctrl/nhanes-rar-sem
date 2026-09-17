@@ -1,0 +1,69 @@
+# ---------------------------------------------------------------- data
+# NHANES files are public but large (tens of GB) and are not redistributed;
+# data/README.md says how to download them. Every derived file, including
+# the participant-level analytic file and the Mplus .dat inputs, is rebuilt
+# by the pipeline and stays out of the repository.
+data/*
+!data/README.md
+!data/.gitkeep
+
+# Mplus writes participant-level SAVEDATA and parameter files next to the
+# inputs. Only the inputs (.inp) are versioned.
+scripts/9_mplus_models/*.dat
+scripts/9_mplus_models/*.sav
+scripts/9_mplus_models/*.dgm
+scripts/9_mplus_models/*.log
+
+# ---------------------------------------------------------------- outputs
+# This repository holds code only. Everything the pipeline writes -- tables,
+# figures, source-data workbooks, the QC workbook and the generated caption
+# and display-item documents -- is rebuilt by running the stages, and the
+# published versions are in the article and its Supplementary Information.
+result/
+figure/
+CAPTIONS.md
+DISPLAY_ITEMS.md
+
+# Mplus output files: .inp files are versioned, .out files are not
+scripts/9_mplus_models/*.out
+
+# ---------------------------------------------------------------- archives
+# Retired code and figures kept locally for provenance, not for readers.
+_superseded/
+**/_superseded/
+scripts/_archive_v1_5/
+Arch_*/
+figure/_design_reference/
+figure/_validation/
+
+# ---------------------------------------------------------------- manuscript
+# The manuscript belongs to the journal submission, not the code repository;
+# the generated caption documents are reproduced from CAPTIONS.md.
+manuscript/
+
+# Internal planning and audit notes
+HANDOVER.md
+INTEGRITY_AUDIT.md
+NARRATIVE.md
+NEW_DIRECTION.md
+TODO.md
+ANALYSIS_PLAN_UNCONSTRAINED.md
+LITERATURE_ASSESSMENT.md
+MPLUS_ANALYSIS_LOGIC.md
+RUNBOOK.md
+
+# ---------------------------------------------------------------- tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.Rhistory
+.RData
+.DS_Store
+Thumbs.db
+~$*
+*.tmp
+
+# R GUI history
+scripts/.Rapp.history

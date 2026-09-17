@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper and the archived release."
+type: software
+title: "Rest-activity rhythm dimensions, biological ageing, depressive symptoms and cognition in NHANES 2011-2014: analysis code"
+authors:
+  - family-names: Min
+    given-names: Yiwei
+    affiliation: "Department of Kinesiology and Sport Management, Texas A&M University"
+  - family-names: Liu
+    given-names: Jiling
+    affiliation: "Department of Kinesiology and Sport Management, Texas A&M University"
+license: MIT
+repository-code: "https://github.com/minyiwei-ctrl/nhanes-rar-sem"
+preferred-citation:
+  type: article
+  title: "Rest-activity rhythm dimensions show age-dependent associations with biological aging, depressive symptoms, and cognition in US adults"
+  authors:
+    - family-names: Min
+      given-names: Yiwei
+    - family-names: Liu
+      given-names: Jiling
+  journal: "npj Aging"
+  year: 2026
+  notes: "submitted"

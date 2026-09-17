@@ -1,0 +1,47 @@
+TITLE:
+    IS x age on the a1 path (KDM-BA advancement), adults 18+
+
+DATA:
+    FILE = ../../data/mplus/nhanes_sem.dat;
+
+VARIABLE:
+    NAMES =
+        SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
+        COG_Z MEM_Z FLUEN_Z SPEED_Z
+        AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU;
+
+    USEVARIABLES =
+        IS IS_AGE BA_ADV
+        AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    MISSING = ALL(-9999);
+
+    IDVARIABLE = SEQN;
+
+    STRATIFICATION = STRATUM;
+    CLUSTER        = PSU;
+    WEIGHT         = WT4YR;
+
+ANALYSIS:
+    TYPE        = COMPLEX;
+    ESTIMATOR   = MLR;
+    INFORMATION = OBSERVED;
+
+MODEL:
+    BA_ADV ON IS      (a_main)
+              IS_AGE  (a_int)
+              AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+MODEL CONSTRAINT:
+    ! simple slopes at +/- 1 SD of age, and at the mean
+    NEW(slope_lo slope_mid slope_hi);
+    slope_lo  = a_main - a_int;
+    slope_mid = a_main;
+    slope_hi  = a_main + a_int;
+
+OUTPUT:
+    STDYX CINTERVAL TECH1 TECH3;
+
+SAVEDATA:
+    RESULTS = x_age_is_results.dat;

@@ -1,0 +1,73 @@
+TITLE:
+    IV -> (KDM-BA, log SII) -> COG, adults 60+, unadjusted (same participants)
+    no covariates - COVOK EQ 1 in SUBPOPULATION gives the same participants
+
+DATA:
+    FILE = ../../data/mplus/nhanes_sem_covok.dat;
+
+VARIABLE:
+    NAMES =
+        SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
+        COG_Z MEM_Z FLUEN_Z SPEED_Z
+        AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU COVOK;
+
+    USEVARIABLES =
+        IV BA_ADV SII_LOG
+        MEM_Z FLUEN_Z SPEED_Z;
+
+    MISSING = ALL(-9999);
+
+    SUBPOPULATION = AGE60 EQ 1 AND COVOK EQ 1;
+
+    IDVARIABLE = SEQN;
+
+    STRATIFICATION = STRATUM;
+    CLUSTER        = PSU;
+    WEIGHT         = WT4YR;
+
+ANALYSIS:
+    TYPE        = COMPLEX;
+    ESTIMATOR   = MLR;
+    INFORMATION = OBSERVED;
+    STARTS      = 20;
+
+MODEL:
+    COG BY MEM_Z* (l1)
+           FLUEN_Z* (l2)
+           SPEED_Z* (l3);
+    COG@1;
+
+
+    BA_ADV  ON IV (a1);
+
+    SII_LOG ON IV (a2);
+
+    COG ON IV (cp)
+           BA_ADV  (b1)
+           SII_LOG (b2);
+
+    BA_ADV WITH SII_LOG;
+
+MODEL INDIRECT:
+    COG IND IV;
+    COG IND BA_ADV IV;
+    COG IND SII_LOG IV;
+
+MODEL CONSTRAINT:
+    NEW(ind_BA ind_SII total_ind prop_BA prop_SII total);
+    l1 > 0;
+
+    ind_BA    = a1 * b1;
+    ind_SII   = a2 * b2;
+    total_ind = ind_BA + ind_SII;
+    total     = cp + total_ind;
+    prop_BA   = ind_BA  / total;
+    prop_SII  = ind_SII / total;
+
+OUTPUT:
+    STDYX CINTERVAL TECH1 TECH3 SVALUES;
+
+SAVEDATA:
+    RESULTS = m_cog_old_iv_crude_results.dat;
+    TECH3   = m_cog_old_iv_crude_tech3.dat;

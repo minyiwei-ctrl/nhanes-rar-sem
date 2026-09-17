@@ -1,0 +1,68 @@
+TITLE:
+    RA -> (KDM-BA, log SII) -> PHQ9, adults 18-59
+
+DATA:
+    FILE = ../../data/mplus/nhanes_sem.dat;
+
+VARIABLE:
+    NAMES =
+        SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
+        COG_Z MEM_Z FLUEN_Z SPEED_Z
+        AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU;
+
+    USEVARIABLES =
+        RA BA_ADV SII_LOG
+        PHQ9
+        AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    MISSING = ALL(-9999);
+
+    SUBPOPULATION = AGE60 EQ 0;
+
+    IDVARIABLE = SEQN;
+
+    STRATIFICATION = STRATUM;
+    CLUSTER        = PSU;
+    WEIGHT         = WT4YR;
+
+ANALYSIS:
+    TYPE        = COMPLEX;
+    ESTIMATOR   = MLR;
+    INFORMATION = OBSERVED;
+
+MODEL:
+
+    BA_ADV  ON RA (a1)
+               AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    SII_LOG ON RA (a2)
+               AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    PHQ9 ON RA (cp)
+           BA_ADV  (b1)
+           SII_LOG (b2)
+           AGE SEX BMI EDU WEAR_T SLEEP_H;
+
+    BA_ADV WITH SII_LOG;
+
+MODEL INDIRECT:
+    PHQ9 IND RA;
+    PHQ9 IND BA_ADV RA;
+    PHQ9 IND SII_LOG RA;
+
+MODEL CONSTRAINT:
+    NEW(ind_BA ind_SII total_ind prop_BA prop_SII total);
+    ind_BA    = a1 * b1;
+    ind_SII   = a2 * b2;
+    total_ind = ind_BA + ind_SII;
+    total     = cp + total_ind;
+    prop_BA   = ind_BA  / total;
+    prop_SII  = ind_SII / total;
+
+OUTPUT:
+    STDYX CINTERVAL TECH1 TECH3 SVALUES;
+
+SAVEDATA:
+    RESULTS = m_dep_young_ra_results.dat;
+    TECH3   = m_dep_young_ra_tech3.dat;

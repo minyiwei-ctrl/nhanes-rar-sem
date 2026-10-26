@@ -21,8 +21,14 @@ Karas et al. (2022).
 IS = V_between / (V_between + V_within) on the hourly grid; on a balanced grid
 this equals Var(composite profile) / Var(all observations), and it stays in
 [0, 1] under incomplete clock coverage.
-IV = n * sum((x_i - x_{i-1})^2) / ((n-1) * sum((x_i - xbar)^2)) on the
-composite hourly profile.
+IV is computed on the chronological hourly series of the whole recording
+(Witting et al. 1990; Van Someren et al. 1999): the mean squared difference
+between hours that are adjacent in time and both observed, divided by the
+variance of the observed hours. No difference is taken across a missing hour
+or a missing day, and the series does not wrap. On a complete series this is
+N * sum((x_t - x_{t-1})^2) / ((N-1) * sum((x_t - xbar)^2)). The same ratio
+on the composite 24-hour profile (the 2026-08 analytic file) is kept as
+IV_profile_legacy for audit only.
 M10 and L5 are the maximum 600-minute and minimum 300-minute rolling means of
 the composite minute profile, complete windows only, wrapping past midnight.
 RA = (M10 - L5) / (M10 + L5).
@@ -53,6 +59,7 @@ SAMPLES_PER_MIN = 4800    # 80 Hz x 60 s
 WEAR_CLASSES = (1, 2)     # PAXPREDM: 1 = wake wear, 2 = sleep wear
 MIN_VALID_MIN_PER_DAY = 600
 MIN_VALID_DAYS = 3
+MIN_ADJACENT_PAIRS = 24   # IV is NaN with fewer adjacent valid hour pairs than one day holds
 
 # Two artefacts of the XPT -> CSV conversion, handled by _denum() and ZERO_EPS:
 #   1. Character variables (PAXDAYM, PAXPREDM) arrive as the literal string
@@ -306,17 +313,64 @@ def interdaily_stability(hourly_by_day):
     return v_between / total
 
 
-def intradaily_variability(profile_24h):
-    """IV = n * sum((x_i - x_{i-1})^2) / ((n-1) * sum((x_i - xbar)^2)).
+def intradaily_variability_series(hourly_by_day, days):
+    """IV on the chronological hourly series of one participant.
 
-    profile_24h : length-24 composite profile, NaN allowed.
-    This is the von Neumann ratio, with range [0, 4]:
-        IV -> 0           perfectly smooth profile
-        IV  = 2n/(n-1)    white noise; 2.087 for the n = 24 hourly bins used here
-        IV  = 4           perfectly alternating profile
-    The 0-2 range quoted in the actigraphy literature (Witting et al. 1990;
-    Van Someren et al. 1996) is the range observed in rest-activity profiles,
-    not a bound.
+    hourly_by_day : [n_days x 24] hourly means, NaN where an hour was not observed.
+    days          : calendar day index of each row (PAXDAYM); rows are sorted by it.
+
+    A squared difference enters the numerator only for two hours that are
+    adjacent in time and both observed: hour h to h+1 within a day, and hour
+    23 to hour 0 only when the next row is the next calendar day. Nothing is
+    differenced across a missing hour, across a missing day, or from the end
+    of the recording back to its start.
+
+        IV = mean over adjacent valid pairs of (x_{t+1} - x_t)^2
+             / population variance of the observed hours
+
+    On a complete series this equals Witting's
+    N * sum((x_t - x_{t-1})^2) / ((N-1) * sum((x_t - xbar)^2)). Range [0, 4]:
+    2 for white noise, 4 for a perfectly alternating series.
+
+    Returns (iv, n_hours, n_pairs). iv is NaN when fewer than
+    MIN_ADJACENT_PAIRS valid pairs exist or the variance is zero; it is never 0
+    by default.
+    """
+    a = np.asarray(hourly_by_day, dtype=float)
+    if a.ndim == 1:
+        a = a[None, :]
+    days = np.asarray(days)
+    order = np.argsort(days, kind='stable')
+    a, days = a[order], days[order]
+    x = a.reshape(-1)
+    n_rows, per = a.shape
+    valid = np.isfinite(x)
+    n_hours = int(valid.sum())
+    if len(x) < 2:
+        return np.nan, n_hours, 0
+    pair = valid[:-1] & valid[1:]
+    # the last hour of row i is adjacent to the first hour of row i+1 only
+    # when row i+1 is the next calendar day
+    for i in range(n_rows - 1):
+        if days[i + 1] != days[i] + 1:
+            pair[(i + 1) * per - 1] = False
+    n_pairs = int(pair.sum())
+    if n_pairs < MIN_ADJACENT_PAIRS or n_hours < 2:
+        return np.nan, n_hours, n_pairs
+    xo = x[valid]
+    var = np.mean((xo - xo.mean()) ** 2)
+    if var <= 0:
+        return np.nan, n_hours, n_pairs
+    d = x[1:] - x[:-1]
+    return float(np.mean(d[pair] ** 2) / var), n_hours, n_pairs
+
+
+def intradaily_variability_profile(profile_24h):
+    """The 2026-08 variant, kept for audit as IV_profile_legacy: the von
+    Neumann ratio n * sum((x_i - x_{i-1})^2) / ((n-1) * sum((x_i - xbar)^2))
+    on the length-24 composite profile, after dropping missing hours (so two
+    hours either side of a gap are differenced) and without wrapping past
+    midnight. Not the conventional IV; see intradaily_variability_series.
     """
     x = np.asarray(profile_24h, dtype=float)
     x = x[np.isfinite(x)]

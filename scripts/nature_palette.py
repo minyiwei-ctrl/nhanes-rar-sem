@@ -67,11 +67,12 @@ WONG = ['#000000', '#E69F00', '#56B4E9', '#009E73',
         '#F0E442', '#0072B2', '#D55E00', '#CC79A7']
 
 
-# Display conventions shared by every table and figure. Internal keys are not
-# changed: '60+' remains the key that selects models; only the printed label
-# differs.
+# Display conventions shared by every table and figure. The age-cell keys
+# come from population.py ('20-59', '60+', '20+'); only the printed label is
+# defined here.
+from population import YOUNG, OLD, POOLED, ADULT_MIN_AGE, OLD_MIN_AGE
 
-AGE_LABEL = {'18-59': '18–59', '60+': '≥60', '18+': '≥18'}
+AGE_LABEL = {YOUNG: f'{ADULT_MIN_AGE}–59', OLD: f'≥{OLD_MIN_AGE}', POOLED: f'≥{ADULT_MIN_AGE}'}
 
 
 def age_label(cell, prefix=''):

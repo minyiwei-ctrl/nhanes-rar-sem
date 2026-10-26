@@ -1,5 +1,5 @@
 TITLE:
-    IV -> (KDM-BA, log SII) -> PHQ9, adults 18-59, adjusted for activity volume
+    IV -> (KDM-BA, log SII) -> PHQ9, adults 20-59, adjusted for activity volume
 
 DATA:
     FILE = ../../data/mplus/nhanes_sem.dat;
@@ -9,7 +9,7 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z
         AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
-        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU;
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20;
 
     USEVARIABLES =
         IV BA_ADV SII_LOG
@@ -18,7 +18,7 @@ VARIABLE:
 
     MISSING = ALL(-9999);
 
-    SUBPOPULATION = AGE60 EQ 0;
+    SUBPOPULATION = ADULT20 EQ 1 AND AGE60 EQ 0;
 
     IDVARIABLE = SEQN;
 

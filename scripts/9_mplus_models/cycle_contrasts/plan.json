@@ -1,0 +1,105 @@
+{
+  "created_utc": "2026-10-20T18:01:41.170640+00:00",
+  "models": [
+    {
+      "model": "cycle_diff_young_ba_adv_ra",
+      "age": "young",
+      "outcome": "BA_ADV",
+      "exposure": "RA"
+    },
+    {
+      "model": "cycle_diff_young_ba_adv_is",
+      "age": "young",
+      "outcome": "BA_ADV",
+      "exposure": "IS"
+    },
+    {
+      "model": "cycle_diff_young_ba_adv_iv",
+      "age": "young",
+      "outcome": "BA_ADV",
+      "exposure": "IV"
+    },
+    {
+      "model": "cycle_diff_young_sii_log_ra",
+      "age": "young",
+      "outcome": "SII_LOG",
+      "exposure": "RA"
+    },
+    {
+      "model": "cycle_diff_young_sii_log_is",
+      "age": "young",
+      "outcome": "SII_LOG",
+      "exposure": "IS"
+    },
+    {
+      "model": "cycle_diff_young_sii_log_iv",
+      "age": "young",
+      "outcome": "SII_LOG",
+      "exposure": "IV"
+    },
+    {
+      "model": "cycle_diff_old_ba_adv_ra",
+      "age": "old",
+      "outcome": "BA_ADV",
+      "exposure": "RA"
+    },
+    {
+      "model": "cycle_diff_old_ba_adv_is",
+      "age": "old",
+      "outcome": "BA_ADV",
+      "exposure": "IS"
+    },
+    {
+      "model": "cycle_diff_old_ba_adv_iv",
+      "age": "old",
+      "outcome": "BA_ADV",
+      "exposure": "IV"
+    },
+    {
+      "model": "cycle_diff_old_sii_log_ra",
+      "age": "old",
+      "outcome": "SII_LOG",
+      "exposure": "RA"
+    },
+    {
+      "model": "cycle_diff_old_sii_log_is",
+      "age": "old",
+      "outcome": "SII_LOG",
+      "exposure": "IS"
+    },
+    {
+      "model": "cycle_diff_old_sii_log_iv",
+      "age": "old",
+      "outcome": "SII_LOG",
+      "exposure": "IV"
+    }
+  ],
+  "reason": "Eight cycle-specific full SEM outputs carry non-positive first-order derivative product matrix warnings attributed by Mplus to parameters exceeding design degrees of freedom. All 18 split-cycle primary SEMs are retained as retired audit runs, with no inferential use. Replace those comparisons with 12 single-outcome pooled regressions allowing all exposure and covariate slopes and intercepts to differ by cycle. The pooled design retains 29 strata and 61 PSUs.",
+  "scope": [
+    "Two age groups x two biological outcomes x three rhythm metrics, fixed before fitting replacement models.",
+    "The exposure-by-cycle coefficient is the formal cycle contrast; bG and bH are cycle-specific slopes in the pooled model, common observed-variable scale.",
+    "No cognitive/depressive indirect effects inferred from these regressions. They are diagnostic exposure\u2013biological-measure associations, not full SEM a paths.",
+    "Outcome-specific observed samples differ from full FIML SEM samples. Models retain original covariates and do not add activity-volume adjustment.",
+    "P values are exploratory and unadjusted; the cycle contrast cannot isolate laboratory instrument effects from period differences."
+  ],
+  "retired_models": [
+    "cycleG_m_dep_young_ra",
+    "cycleH_m_dep_young_ra",
+    "cycleG_m_dep_young_is",
+    "cycleH_m_dep_young_is",
+    "cycleG_m_dep_young_iv",
+    "cycleH_m_dep_young_iv",
+    "cycleG_m_dep_old_ra",
+    "cycleH_m_dep_old_ra",
+    "cycleG_m_dep_old_is",
+    "cycleH_m_dep_old_is",
+    "cycleG_m_dep_old_iv",
+    "cycleH_m_dep_old_iv",
+    "cycleG_m_cog_old_ra",
+    "cycleH_m_cog_old_ra",
+    "cycleG_m_cog_old_is",
+    "cycleH_m_cog_old_is",
+    "cycleG_m_cog_old_iv",
+    "cycleH_m_cog_old_iv"
+  ]
+}

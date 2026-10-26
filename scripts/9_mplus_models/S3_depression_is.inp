@@ -1,6 +1,6 @@
 TITLE:
     S3 depression, secondary age-unstratified model: exposure IS (interdaily
-    stability) -> (BA_ADV, SII_LOG) -> PHQ9, all adults aged 18 and over. Otherwise
+    stability) -> (BA_ADV, SII_LOG) -> PHQ9, all adults aged 20 and over. Otherwise
     as M1_depression.inp. Every regression adjusts for AGE SEX BMI EDU WEAR_T SLEEP_H; residual
     covariance BA_ADV WITH SII_LOG. TYPE = COMPLEX (WT4YR, STRATUM, PSU), MLR,
     missing dependent variables by FIML, delta-method intervals (CINTERVAL),
@@ -15,7 +15,7 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z AGE SEX BMI EDU WEAR_T
         SLEEP_H VOLUME AGE60 IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM
-        PSU;
+        PSU ADULT20;
 
     USEVARIABLES =
         IS BA_ADV SII_LOG PHQ9
@@ -23,6 +23,8 @@ VARIABLE:
 
     MISSING = ALL(-9999);
 
+
+    SUBPOPULATION = ADULT20 EQ 1;
     IDVARIABLE = SEQN;
 
     STRATIFICATION = STRATUM;

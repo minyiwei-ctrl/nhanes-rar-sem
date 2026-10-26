@@ -13,7 +13,8 @@ from rar_core import (
     SED_THRESHOLD, MVPA_THRESHOLD, SAMPLES_PER_MIN,
     clean_chunk, summarise_chunk_pass1, combine_pass1, day2_anchors,
     module_a_person_level, ProfileAccumulator,
-    hourly_bins, interdaily_stability, intradaily_variability, m10_l5_ra,
+    hourly_bins, interdaily_stability, intradaily_variability_profile,
+    intradaily_variability_series, MIN_ADJACENT_PAIRS, m10_l5_ra,
 )
 
 _OK = True
@@ -259,15 +260,52 @@ def main():
     is_noise = np.mean([interdaily_stability(rng.normal(size=(7, 24))) for _ in range(400)])
     check('IS, mean over 400 draws of 7 independent days', is_noise, 1 / 7, 0.01,
           'expectation 1/n_days')
-    check('IV, perfectly alternating profile',
-          intradaily_variability(np.tile([0.0, 1.0], 12)), 4.0, 1e-12, 'maximum')
-    iv_noise = np.mean([intradaily_variability(rng.normal(size=24)) for _ in range(20000)])
-    check('IV, mean over 20000 white-noise profiles', iv_noise, 2 * 24 / 23, 0.02,
+    # Legacy composite-profile variant (IV_profile_legacy), kept for audit.
+    check('IV_profile_legacy, perfectly alternating profile',
+          intradaily_variability_profile(np.tile([0.0, 1.0], 12)), 4.0, 1e-12, 'maximum')
+    iv_noise = np.mean([intradaily_variability_profile(rng.normal(size=24)) for _ in range(20000)])
+    check('IV_profile_legacy, mean over 20000 white-noise profiles', iv_noise, 2 * 24 / 23, 0.02,
           'E[IV] = 2n/(n-1), not 2')
-    check('IV, monotone ramp', intradaily_variability(np.arange(24.0)),
+    check('IV_profile_legacy, monotone ramp', intradaily_variability_profile(np.arange(24.0)),
           24 / np.sum((np.arange(24.) - 11.5) ** 2), 1e-9, 'closed form')
-    iv_s = intradaily_variability(hourly_bins(make_day()))
-    ok(f'IV, smooth sinusoid = {iv_s:.4f} lies in (0, 0.25)', 0 < iv_s < 0.25)
+    iv_s = intradaily_variability_profile(hourly_bins(make_day()))
+    ok(f'IV_profile_legacy, smooth sinusoid = {iv_s:.4f} lies in (0, 0.25)', 0 < iv_s < 0.25)
+
+    print()
+    print('=' * 80)
+    print('T5b IV on the chronological hourly series: adjacency, gaps, no wrap')
+    print('=' * 80)
+    H = rng.gamma(2.0, 5.0, size=(7, 24))
+    days = np.arange(1, 8)
+    x = H.reshape(-1)
+    N = len(x)
+    witting = N * np.sum(np.diff(x) ** 2) / ((N - 1) * np.sum((x - x.mean()) ** 2))
+    iv, n_h, n_p = intradaily_variability_series(H, days)
+    check('IV series, complete 7-day recording == Witting formula', iv, witting, 1e-12)
+    ok(f'IV series, complete recording uses N-1 = {N - 1} pairs, no wrap', n_p == N - 1 and n_h == N)
+    H2 = H.copy()
+    H2[0, 15] = np.nan                       # 14:00->15:00 and 15:00->16:00 both lost
+    _, n_h2, n_p2 = intradaily_variability_series(H2, days)
+    ok('IV series, one missing hour removes exactly its two adjacent pairs',
+       n_p2 == n_p - 2 and n_h2 == n_h - 1)
+    H3 = H[[0, 2, 3, 4, 5, 6]]               # day 2 missing: day 1 23:00 -> day 3 00:00 is not adjacent
+    _, _, n_p3 = intradaily_variability_series(H3, np.array([1, 3, 4, 5, 6, 7]))
+    ok('IV series, a missing day breaks the midnight pair', n_p3 == 6 * 24 - 2)
+    _, _, n_p4 = intradaily_variability_series(H[:2], np.array([1, 2]))
+    ok('IV series, consecutive days are joined across midnight (47 pairs from 2 days)', n_p4 == 47)
+    perm = rng.permutation(7)
+    check('IV series, invariant to row order (rows are sorted by day)',
+          intradaily_variability_series(H[perm], days[perm])[0], iv, 1e-12)
+    short = np.r_[H[0, :10], [np.nan] * 14][None, :]
+    ok(f'IV series, fewer than {MIN_ADJACENT_PAIRS} pairs -> NaN, not 0',
+       np.isnan(intradaily_variability_series(short, [1])[0]))
+    ok('IV series, zero variance -> NaN, not 0',
+       np.isnan(intradaily_variability_series(np.ones((3, 24)), [1, 2, 3])[0]))
+    iv_wn = np.mean([intradaily_variability_series(rng.normal(size=(7, 24)), days)[0]
+                     for _ in range(300)])
+    check('IV series, mean over 300 white-noise recordings', iv_wn, 2.0, 0.05, 'E[IV] -> 2')
+    check('IV series, perfectly alternating recording',
+          intradaily_variability_series(np.tile([0.0, 1.0], (7, 12)), days)[0], 4.0, 1e-12)
 
     print()
     print('=' * 80)

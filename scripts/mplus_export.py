@@ -82,7 +82,19 @@ def effect_table(eff, info):
 
 
 def interaction_table(est, info):
-    s = est[est.solution == 'STDYX']
+    """Main effect, interaction and simple slopes of the age-moderation models,
+    all from the unstandardized solution.
+
+    The inputs of these models are z-scored on the pooled analytic sample
+    before the product is formed (script 9), so the unstandardized
+    coefficients are already on one common scale: the main effect is the
+    rhythm-metric slope at mean age per reference SD, the interaction is the
+    change in that slope per reference SD of age, and the simple slopes are
+    main +/- interaction by construction. Mplus's STDYX solution rescales the
+    product term by its own standard deviation, which is not 1, so a STDYX
+    interaction coefficient does not equal the difference between adjacent
+    simple slopes (-0.058 against -0.054 for RA); it is therefore not used
+    here."""
     u = est[est.solution == 'unstandardized']
     rows = []
     for _, m in info[info.family == 'interaction'].iterrows():
@@ -90,8 +102,8 @@ def interaction_table(est, info):
         # The moderation family has two possible dependent variables; read the
         # section the model fits.
         dv = 'SII_LOG ON' if m.outcome == 'log SII' else 'BA_ADV ON'
-        main = s[(s.model == m.model) & (s.section == dv) & (s.parameter == exp)]
-        inter = s[(s.model == m.model) & (s.section == dv) & (s.parameter == f'{exp}_AGE')]
+        main = u[(u.model == m.model) & (u.section == dv) & (u.parameter == exp)]
+        inter = u[(u.model == m.model) & (u.section == dv) & (u.parameter == f'{exp}_AGE')]
         # Mplus truncates parameter names to 8 characters, so SLOPE_MID appears
         # as SLOPE_MI and total_ind as TOTAL_IN. Match on the truncation.
         slopes = {p: u[(u.model == m.model) & (u.parameter == p[:8].upper())]

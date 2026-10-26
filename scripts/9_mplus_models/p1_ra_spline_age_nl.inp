@@ -1,0 +1,58 @@
+TITLE:
+    P1 RA: spline a1 equation with age interactions; MODEL TEST = the three non-linear age terms zero (3 df)
+
+DATA:
+    FILE = ../../data/mplus/nhanes_sem_p1.dat;
+
+VARIABLE:
+    NAMES =
+        SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9 COG_Z MEM_Z
+        FLUEN_Z SPEED_Z AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60 IV_AGE
+        IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20 RA_N3 RA_N4 RA_N5
+        IV_N3 IV_N4 IV_N5 RA_Q2 RA_Q3 RA_Q4 RA_Q5 IV_Q2 IV_Q3 IV_Q4 IV_Q5
+        EDU2 EDU3 EDU4 EDU5;
+
+    USEVARIABLES =
+        RA RA_N3 RA_N4 RA_N5 RA_AGE AGE BA_ADV
+        SEX BMI EDU WEAR_T SLEEP_H
+        RAN3AGE RAN4AGE RAN5AGE;
+
+    MISSING = ALL(-9999);
+
+    SUBPOPULATION = ADULT20 EQ 1;
+
+    IDVARIABLE = SEQN;
+
+    STRATIFICATION = STRATUM;
+    CLUSTER        = PSU;
+    WEIGHT         = WT4YR;
+
+DEFINE:
+    RAN3AGE = RA_N3*AGE;
+    RAN4AGE = RA_N4*AGE;
+    RAN5AGE = RA_N5*AGE;
+
+ANALYSIS:
+    TYPE        = COMPLEX;
+    ESTIMATOR   = MLR;
+    INFORMATION = OBSERVED;
+
+MODEL:
+    BA_ADV ON RA (b1)
+              RA_N3 (b3)
+              RA_N4 (b4)
+              RA_N5 (b5)
+              AGE (g_age)
+              RA_AGE (i1)
+              RAN3AGE (i3)
+              RAN4AGE (i4)
+              RAN5AGE (i5)
+              SEX BMI EDU WEAR_T SLEEP_H;
+
+MODEL TEST:
+    i3 = 0;
+    i4 = 0;
+    i5 = 0;
+
+OUTPUT:
+    STDYX CINTERVAL TECH1;

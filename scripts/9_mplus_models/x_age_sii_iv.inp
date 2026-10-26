@@ -1,5 +1,5 @@
 TITLE:
-    IV x age on the a2 path (log SII), adults 18+
+    IV x age on the a2 path (log SII), adults 20+
 
 DATA:
     FILE = ../../data/mplus/nhanes_sem.dat;
@@ -9,7 +9,7 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z
         AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
-        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU;
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20;
 
     USEVARIABLES =
         IV IV_AGE SII_LOG
@@ -17,6 +17,8 @@ VARIABLE:
 
     MISSING = ALL(-9999);
 
+
+    SUBPOPULATION = ADULT20 EQ 1;
     IDVARIABLE = SEQN;
 
     STRATIFICATION = STRATUM;

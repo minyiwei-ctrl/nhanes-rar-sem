@@ -21,7 +21,7 @@ DAT_COVOK = '../../data/mplus/nhanes_sem_covok.dat'   # DAT plus the COVOK flag
 NAMES = """SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z
         AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
-        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU"""
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20"""
 
 NAMES_COVOK = NAMES + ' COVOK'
 
@@ -35,11 +35,14 @@ OUTCOMES = {
             'COG'),
 }
 
-# age cells: name -> (subpopulation line, label)
+# age cells: name -> (subpopulation line, label). The analysis population is
+# adults aged 20 and over (ADULT20 = 1, script 9); the data file keeps every
+# adult aged 18+ for the survey design, and the models select the population
+# through SUBPOPULATION rather than by deleting records.
 CELLS = {
-    'young': ('SUBPOPULATION = AGE60 EQ 0;', 'adults 18-59'),
+    'young': ('SUBPOPULATION = ADULT20 EQ 1 AND AGE60 EQ 0;', 'adults 20-59'),
     'old':   ('SUBPOPULATION = AGE60 EQ 1;', 'adults 60+'),
-    'all':   ('', 'adults 18+'),
+    'all':   ('SUBPOPULATION = ADULT20 EQ 1;', 'adults 20+'),
 }
 
 TEMPLATE = """TITLE:
@@ -158,7 +161,7 @@ def spec():
 # Age-interaction models: the a1 equation alone with an exposure x age
 # product, plus simple slopes at -1 s.d., mean and +1 s.d. of age.
 INTERACTION = """TITLE:
-    {exp} x age on the a1 path (KDM-BA advancement), adults 18+{voltxt}
+    {exp} x age on the a1 path (KDM-BA advancement), adults 20+{voltxt}
 
 DATA:
     FILE = {dat};
@@ -172,6 +175,8 @@ VARIABLE:
         {covs};
 
     MISSING = ALL(-9999);
+
+    SUBPOPULATION = ADULT20 EQ 1;
 
     IDVARIABLE = SEQN;
 

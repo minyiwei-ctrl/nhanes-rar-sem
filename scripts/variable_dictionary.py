@@ -31,10 +31,22 @@ VARS = [
     # exposure
     ('IV', 'IV', 'Rest-activity rhythm', '5',
      'Intradaily variability. Fragmentation of the rest-activity cycle: the '
-     'ratio of the mean squared difference between successive hours to the '
-     'overall variance, computed on the hourly-binned MIMS profile averaged '
-     'across valid days. The von Neumann ratio, bounded [0, 4]; higher values '
-     'mean a more broken-up day. Dimensionless.'),
+     'mean squared difference between hourly MIMS means that are adjacent in '
+     'time and both observed, over the participant\'s chronological series of '
+     'valid days, divided by the variance of the observed hours (Witting et '
+     'al. 1990; van Someren et al. 1999). No difference is taken across a '
+     'missing hour or a missing day. Bounded [0, 4]; 2 for white noise; higher '
+     'values mean a more fragmented day. Dimensionless.'),
+    (None, 'IV_n_hours', 'Rest-activity rhythm', '5',
+     'Number of observed hours in the series from which IV was computed.'),
+    (None, 'IV_n_pairs', 'Rest-activity rhythm', '5',
+     'Number of adjacent, both-observed hour pairs entering the IV '
+     'numerator; IV is missing below MIN_ADJACENT_PAIRS (see the derivation '
+     'rules).'),
+    (None, 'IV_profile_legacy', 'Rest-activity rhythm', '5',
+     'The ratio computed on the composite 24-hour profile (hours averaged '
+     'across valid days), as in the 2026-08 analytic file. Kept for audit '
+     'only; not the conventional IV and not used in any analysis.'),
     ('IS', 'IS', 'Rest-activity rhythm', '5',
      'Interdaily stability. Reproducibility of the 24-hour pattern across '
      'days, as the between-hour share of total variance in the hourly profile '
@@ -87,9 +99,10 @@ VARS = [
      'with "refused" (7) and "don\'t know" (9) set to missing and all nine '
      'items required. Higher scores mean more depressive symptoms.'),
     ('MEM_Z', 'memory_score', 'Outcome', '4',
-     'CERAD Word List Learning total, z-standardised within adults aged 60+ '
-     '(the only group NHANES tests). Raw zeros are recoded to missing before '
-     'standardisation, as they are a non-response code rather than a score.'),
+     'CERAD Word List Learning total (three learning trials plus delayed '
+     'recall, 0-40), z-standardised within adults aged 60+ (the only group '
+     'NHANES tests). A score of 0 is a valid result of a completed test and '
+     'is kept; NHANES leaves non-administered tests blank with a reason code.'),
     ('FLUEN_Z', 'fluency_score', 'Outcome', '4',
      'Animal Fluency total (CFDAST), z-standardised within 60+.'),
     ('SPEED_Z', 'speed_score', 'Outcome', '4',
@@ -106,6 +119,13 @@ VARS = [
      'Age in years at screening. Top-coded at 80 by NHANES.'),
     ('AGE60', None, 'Covariate', '9',
      'Indicator for age 60 and over, used to select the analysis cell.'),
+    ('ADULT20', None, 'Covariate', '9',
+     'Indicator for age 20 and over: the analysis population (population.py). '
+     'The Mplus data file keeps every adult aged 18 and over so that the '
+     'survey design is intact; every model selects the population through '
+     'SUBPOPULATION (ADULT20 EQ 1) rather than by deleting records. Age 20 is '
+     'the age from which NHANES records the adult education variable '
+     '(DMDEDUC2) used for adjustment.'),
     (None, 'COVOK', 'Covariate', '9',
      'Indicator that all six covariates are observed, in '
      'nhanes_sem_covok.dat only. The unadjusted counterparts of the primary '
@@ -164,7 +184,7 @@ def pipeline_constants():
     src = RAR_CORE.read_text()
     c = {}
     for name in ('MVPA_THRESHOLD', 'SED_THRESHOLD', 'PEAK_N', '9',
-                 'MIN_VALID_MIN_PER_DAY', 'MIN_VALID_DAYS'):
+                 'MIN_VALID_MIN_PER_DAY', 'MIN_VALID_DAYS', 'MIN_ADJACENT_PAIRS'):
         m = re.search(rf'^{name}\s*=\s*([\d.]+)', src, re.M)
         if m:
             c[name] = float(m.group(1))
@@ -182,6 +202,13 @@ def derivation_rules(c):
          f'observed. A day counts when it has at least '
          f'{c["MIN_VALID_MIN_PER_DAY"]:.0f} valid minutes; a participant '
          f'counts with at least {c["MIN_VALID_DAYS"]:.0f} valid days.'),
+        ('Intradaily variability',
+         f'Computed on the chronological hourly series of the valid days: a '
+         f'squared difference enters only for two hours adjacent in time and '
+         f'both observed (hour 23 to hour 0 only across consecutive calendar '
+         f'days); the numerator is their mean and the denominator the variance '
+         f'of the observed hours. IV is missing with fewer than '
+         f'{c["MIN_ADJACENT_PAIRS"]:.0f} such pairs or zero variance.'),
         ('Sentinel values',
          'PAXMTSM = -0.01 marks "not computable" and is set to missing, not '
          'clipped to zero. Treating it as zero movement passed the quality '

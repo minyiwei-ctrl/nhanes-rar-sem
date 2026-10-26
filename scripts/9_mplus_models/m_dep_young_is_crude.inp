@@ -1,5 +1,5 @@
 TITLE:
-    IS -> (KDM-BA, log SII) -> PHQ9, adults 18-59, unadjusted (same participants)
+    IS -> (KDM-BA, log SII) -> PHQ9, adults 20-59, unadjusted (same participants)
     no covariates - COVOK EQ 1 in SUBPOPULATION gives the same participants
 
 DATA:
@@ -10,7 +10,7 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z
         AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
-        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU COVOK;
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20 COVOK;
 
     USEVARIABLES =
         IS BA_ADV SII_LOG
@@ -18,7 +18,7 @@ VARIABLE:
 
     MISSING = ALL(-9999);
 
-    SUBPOPULATION = AGE60 EQ 0 AND COVOK EQ 1;
+    SUBPOPULATION = ADULT20 EQ 1 AND AGE60 EQ 0 AND COVOK EQ 1;
 
     IDVARIABLE = SEQN;
 

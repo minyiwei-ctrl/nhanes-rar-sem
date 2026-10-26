@@ -2,7 +2,7 @@ TITLE:
     Sensitivity S1 - depression dual-mediator SEM, KDM-BA tails trimmed
 
     Identical to M1_depression.inp except that participants beyond the 0.5th
-    (8.65 years) or 99.5th (115.86 years) percentile of KDM-Biological Age
+    (11.04 years) or 99.5th (116.35 years) percentile of KDM-Biological Age
     are excluded via SUBPOPULATION (domain analysis -- all strata and PSUs
     stay in the variance estimation, which USEOBSERVATIONS would break).
     All other specification is unchanged.
@@ -15,13 +15,13 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z AGE SEX BMI EDU WEAR_T
         SLEEP_H VOLUME AGE60 IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM
-        PSU KDMOUT;
+        PSU ADULT20 KDMOUT;
 
     USEVARIABLES =
         IV BA_ADV SII_LOG PHQ9
         AGE SEX BMI EDU WEAR_T SLEEP_H;
 
-    SUBPOPULATION = KDMOUT EQ 0;
+    SUBPOPULATION = ADULT20 EQ 1 AND KDMOUT EQ 0;
 
     MISSING = ALL(-9999);
     IDVARIABLE = SEQN;

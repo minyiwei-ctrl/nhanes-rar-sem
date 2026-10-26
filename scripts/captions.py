@@ -28,19 +28,19 @@ TITLES = {
     # main figures
     'Fig1_Study_Overview': (
         'Fig. 1',
-        'Parallel-pathway framework and sample selection'),
+        'Study framework and sample selection'),
     'Fig2_MediatorContrast': (
         'Fig. 2',
-        'Rest-activity rhythm associations with candidate biological '
-        'pathways'),
-    'Fig3_Age_Moderation_SimpleSlopes': (
+        'Rest-activity rhythm associations with the two candidate biological '
+        'measures and the indirect associations through them'),
+    'Fig3_PathDecomposition': (
         'Fig. 3',
-        'Rest-activity rhythm associations with biological-age advancement '
-        'at three ages'),
-    'Fig4_PathDecomposition': (
+        'Path decomposition of the associations with depressive symptoms and '
+        'cognitive function for each rest-activity rhythm metric'),
+    'Fig4_Age_Moderation_SimpleSlopes': (
         'Fig. 4',
-        'Rest-activity rhythm associations with depressive symptoms and '
-        'cognitive function: structural paths and effect decomposition'),
+        'Associations of rest-activity rhythm metrics with KDM-BA advancement '
+        'at selected ages'),
 
     # main tables
     'Table1_Sample_Characteristics': (
@@ -58,30 +58,23 @@ TITLES = {
     # supplementary figures
     'SuppFigS1_Age_Moderation_WLS_Forest': (
         'Supplementary Fig. S1',
-        'Rest-activity rhythm associations with biological-age advancement '
-        'within four age bands'),
+        'Rest-activity rhythm associations with biological-age advancement within four age groups'),
     'SuppFigS2_RAR_Dimensions_Forest': (
         'Supplementary Fig. S2',
-        'Rest-activity rhythm associations with depressive symptoms and '
-        'cognitive function, total and direct'),
+        'Total and direct associations of each rest-activity rhythm metric with depressive symptoms and cognitive function'),
     'SuppFigS3_GAM_Partial_Effects': (
         'Supplementary Fig. S3',
-        'Rest-activity rhythm associations with depressive symptoms and '
-        'cognitive function, spline and linear fits'),
+        'Linearity of each rest-activity rhythm association with depressive symptoms and cognitive function'),
     'SuppFigS4_Exposure_Mediator_Distributions': (
         'Supplementary Fig. S4',
-        'Distributions of rest-activity rhythm metrics, biological-age '
-        'advancement and systemic inflammation, by age stratum'),
+        'Distributions of rest-activity rhythm metrics, biological-age advancement and log SII, by age group'),
     'SuppFigS5_RhythmToBiologicalAge_VolumeAdjustment': (
         'Supplementary Fig. S5',
-        'Rest-activity rhythm associations with biological-age advancement, '
-        'by analysis sample and covariate set'),
+        'Rest-activity rhythm associations with biological-age advancement in the three structural models, core against volume-adjusted covariates'),
 
     'SuppFigS6_Variance_Decomposition': (
         'Supplementary Fig. S6',
-        'Variance in biological-age advancement and in the immune-inflammation '
-        'index uniquely attributable to each predictor, against a permutation '
-        'reference'),
+        'Incremental variance explained by each predictor in the equations for biological-age advancement and log SII'),
 
     # supplementary tables
     'SuppTableS1_Sample_Cascade': (
@@ -110,7 +103,9 @@ TITLES = {
     'SuppTableS10_GAM_Linearity': (
         'Supplementary Table S10',
         'Tests of linearity for rest-activity rhythm associations with '
-        'depressive symptoms and cognitive function'),
+        'depressive symptoms, cognitive function and the two biological '
+        'measures, and linearity of the relative-amplitude associations on '
+        'the quintile scale'),
     'SuppTableS11_KDM_Outlier_Sensitivity': (
         'Supplementary Table S11',
         'Rest-activity rhythm associations before and after trimming the '
@@ -156,6 +151,27 @@ TITLES = {
         'Unadjusted and covariate-adjusted estimates from the primary '
         'structural models'),
 }
+
+# S21 is written by p1_report.py after the P1 Mplus runs; registering it only
+# once it exists keeps the checkers green in between.
+if (SUPP / 'SuppTableS21_P1_FunctionalForm.xlsx').exists():
+    TITLES['SuppTableS21_P1_FunctionalForm'] = (
+        'Supplementary Table S21',
+        'Design-corrected functional-form, age-interaction and education-coding '
+        'analyses of the rhythm-to-biological-age equation')
+# S22 and S23 are written by freeze_sensitivity_report.py after the cycle_audit,
+# cycle_contrasts and selection_audit Mplus runs (stage 19), on the same terms.
+if (SUPP / 'SuppTableS22_CycleSensitivity.xlsx').exists():
+    TITLES['SuppTableS22_CycleSensitivity'] = (
+        'Supplementary Table S22',
+        'Survey-cycle sensitivity analyses of the structural models: '
+        'cycle-adjusted estimates, functional-form tests and pooled '
+        'between-cycle contrasts')
+if (SUPP / 'SuppTableS23_CognitiveSelection.xlsx').exists():
+    TITLES['SuppTableS23_CognitiveSelection'] = (
+        'Supplementary Table S23',
+        'Availability of the cognitive test scores among adults aged 60 '
+        'years or older and complete-case refits of the cognition models')
 
 # Words that make a title assert a finding rather than name a display.
 # Matching is on whole words, so terms inside variable names ("relative

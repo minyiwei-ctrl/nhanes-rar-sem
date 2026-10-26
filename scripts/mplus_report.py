@@ -11,6 +11,7 @@ Reads the .out files in scripts/9_mplus_models through mplus_parse.py and writes
   figure/main, figure/supplementary         PDF + PNG figures, each with a
                                             source-data workbook in figure/source_data
 """
+import re
 import sys
 import textwrap
 from pathlib import Path
@@ -26,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from mplus_parse import parse_dir, label_models
 from nature_palette import PHQ9_COLOR, COG_COLOR, KDM_BA_COLOR, SII_COLOR
 from nature_palette import age_label, AGE_LABEL
+from population import YOUNG, OLD, POOLED, ADULT_MIN_AGE, OLD_MIN_AGE
 from mplus_export import (flag_duplicates, path_table, effect_table,
                           interaction_table, indirect_with_holm,
                           mediation_proportion, fmt_ci, fmt_p)
@@ -49,8 +51,8 @@ for p in (QC, MAIN, SUPP, FIG, FIG_SUPP, SRC):
 #
 #   Fig 1    study overview and sample flow                  script 14
 #   Fig 2    mediator contrast, KDM-BA against log SII       here, fig_dissociation
-#   Fig 3    age moderation, simple slopes                   here, fig2_moderation
-#   Fig 4    full path decomposition                         here, fig3_paths
+#   Fig 3    full path decomposition                         here, fig3_paths
+#   Fig 4    age moderation, simple slopes                   here, fig2_moderation
 #   Supp S5  rhythm -> biological age, core against
 #            volume-adjusted covariates                      here, fig1_specificity
 #   Supplementary Figs S1-S4 come from scripts 11, 12, 13 and 14.
@@ -58,23 +60,26 @@ TABNUM = {'mediation': 'Table2_SEM_Mediation',
           'moderation': 'Table3_Age_Moderation'}
 
 # One main figure per question: Fig 2 which biological measure the rhythm
-# relates to, Fig 3 how that association changes with age, Fig 4 the full
-# decomposition. The a1-by-covariate-set forest is supplementary.
+# relates to (and the indirect associations through each), Fig 3 the full
+# decomposition, Fig 4 how the rhythm-to-biological-age association changes
+# with age. The a1-by-covariate-set forest is supplementary. Panel letters
+# are lower case (EJE); every figure is drawn at its final width.
 FIGNUM = {'rhythm_to_ba': 'SuppFigS5_RhythmToBiologicalAge_VolumeAdjustment',
           'dissociation': 'Fig2_MediatorContrast',
-          'decomposition': 'Fig4_PathDecomposition',
-          'age_moderation': 'Fig3_Age_Moderation_SimpleSlopes'}
+          'decomposition': 'Fig3_PathDecomposition',
+          'age_moderation': 'Fig4_Age_Moderation_SimpleSlopes'}
 
-# Nature figure specification: single column 89 mm, double column 183 mm,
-# maximum height 247 mm, sans-serif 5-7 pt, line weights not below 0.25 pt,
-# vector output.
+# Figure specification: single column 89 mm, double column 183 mm, maximum
+# height 247 mm, vector output with embedded TrueType fonts. Text is sized for
+# the final printed width (EJE: about 8-12 pt at final size; nothing below
+# 7 pt), so the figures are drawn at their final dimensions.
 MM = 1 / 25.4
 W1, W2 = 89 * MM, 183 * MM
 matplotlib.rcParams.update({
     'font.family': 'sans-serif',
     'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans'],
-    'font.size': 7, 'axes.labelsize': 7, 'axes.titlesize': 7,
-    'xtick.labelsize': 6, 'ytick.labelsize': 6, 'legend.fontsize': 6,
+    'font.size': 8, 'axes.labelsize': 8, 'axes.titlesize': 8,
+    'xtick.labelsize': 7, 'ytick.labelsize': 7, 'legend.fontsize': 7,
     'axes.linewidth': 0.5, 'xtick.major.width': 0.5, 'ytick.major.width': 0.5,
     'xtick.major.size': 2.5, 'ytick.major.size': 2.5,
     'lines.linewidth': 0.9, 'patch.linewidth': 0.5,
@@ -106,7 +111,7 @@ EXP_NAME = {'IV': 'Intradaily variability', 'IS': 'Interdaily stability',
 # Metric colours, from nature_palette.
 from nature_palette import EXP_COL
 
-CELLS = [('PHQ-9', '18-59'), ('PHQ-9', '60+'), ('cognition', '60+')]
+CELLS = [('PHQ-9', YOUNG), ('PHQ-9', OLD), ('cognition', OLD)]
 ANALYTIC = BASE / 'data' / 'processed' / '8_nhanes_analytic.csv'
 
 
@@ -343,7 +348,11 @@ def table_main_mediation(paths, effects, holm, props, exposures=EXPOSURES):
                     continue
                 prop = ''
                 if pr is not None:
-                    prop = ('Not estimable' if pd.isna(pr.proportion)
+                    # 'Not reported' marks a ratio suppressed by the reporting
+                    # rule (null total, null indirect, or opposite signs); the
+                    # ratio itself is always computable, so 'not estimable'
+                    # would misdescribe it.
+                    prop = ('Not reported' if pd.isna(pr.proportion)
                             else f'{pr.proportion*100:.1f}% ({pr.prop_lo*100:.1f}–'
                                  f'{pr.prop_hi*100:.1f})')
                 cell_rows.append(blank | {
@@ -356,23 +365,40 @@ def table_main_mediation(paths, effects, holm, props, exposures=EXPOSURES):
     return pd.DataFrame(rows)
 
 
-def table_main_moderation(inter, outcome='KDM-BA advancement'):
+def table_main_moderation(inter, outcome='KDM-BA advancement', include_volume=False):
+    """Table 3 (core covariates only) and, with include_volume, Supplementary
+    Tables S5 / S5b, which add the volume-adjusted block of each exposure."""
     rows = []
-    d = inter[(~inter.volume_adjusted.astype(bool))
-              & (inter.outcome == outcome)].copy()
+    d = inter[inter.outcome == outcome].copy()
+    if not include_volume:
+        d = d[~d.volume_adjusted.astype(bool)]
     d['_o'] = d.exposure.map({e: i for i, e in enumerate(EXPOSURES)})
-    for _, r in d.sort_values('_o').iterrows():
-        rows.append({'Exposure': r.exposure, 'Term': '', 'β (95% CI)': '', 'P': ''})
-        for key, lab in [('main_effect', 'Rhythm metric, at mean age'),
-                         ('interaction', 'Rhythm metric × age'),
+    d['_v'] = d.volume_adjusted.astype(bool).astype(int)
+    # The coefficient column is named b, not β: these are unstandardised
+    # coefficients on the common reference-standardised scale (see the notes),
+    # not the STDYX values of Table 2. The main effect of the rhythm metric in
+    # a model with a mean-centred product term IS the simple slope at the mean
+    # age, so that row is reported once, under its simple-slope name.
+    for _, r in d.sort_values(['_o', '_v']).iterrows():
+        head = {'Exposure': r.exposure, 'Term': '', 'b (95% CI)': '', 'P': ''}
+        if include_volume:
+            head = {'Exposure': r.exposure, 'Covariate set': 'Core covariates + total activity volume' if r._v else 'Core covariates',
+                    'n': f'{int(r.n):,}', 'Term': '', 'b (95% CI)': '', 'P': ''}
+        rows.append(head)
+        for key, lab in [('interaction', 'Rhythm metric × age'),
                          ('SLOPE_LO', 'Simple slope, age −1 s.d.'),
-                         ('SLOPE_MID', 'Simple slope, mean age'),
+                         ('SLOPE_MID', 'Simple slope, mean age (main effect)'),
                          ('SLOPE_HI', 'Simple slope, age +1 s.d.')]:
             if f'{key}_beta' not in r or pd.isna(r[f'{key}_beta']):
                 continue
-            rows.append({'Exposure': '', 'Term': lab,
-                         'β (95% CI)': fmt_ci(r[f'{key}_beta'], r[f'{key}_lo'], r[f'{key}_hi']),
-                         'P': fmt_p(r[f'{key}_p'])})
+            row = {'Exposure': '', 'Term': lab,
+                   'b (95% CI)': fmt_ci(r[f'{key}_beta'], r[f'{key}_lo'], r[f'{key}_hi']),
+                   'P': fmt_p(r[f'{key}_p'])}
+            if include_volume:
+                row = {'Exposure': '', 'Covariate set': '', 'n': '', **row}
+                row.pop('Exposure'); row = {'Exposure': '', 'Covariate set': '', 'n': '', 'Term': lab,
+                                            'b (95% CI)': row['b (95% CI)'], 'P': row['P']}
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -431,44 +457,120 @@ MAIN_NOTES = {
 
 # Notes shared by Tables 2 and 3. 'cells' and 'primary_only' are not shared:
 # Table 3 is not fitted within the three analysis cells and the age-moderation
-# family has no sensitivity counterpart.
-SHARED_NOTES = ['design', 'standardisation', 'metrics', 'covariates']
+# family has no sensitivity counterpart. 'standardisation' (the STDYX note) is
+# Table 2 only: Table 3 reports the unstandardised solution on the common
+# reference-standardised scale and carries its own scale note.
+SHARED_NOTES = ['design', 'metrics', 'covariates']
 
 
-def moderation_notes():
-    """Table 3 notes: the shared notes plus the interaction and simple-slope definitions."""
+def moderation_facts(inter):
+    """Sentences about the age-moderation results, written from the parsed
+    estimates so that the notes cannot outlive the numbers.
+
+    Returns (sii_sentence, support_sentence, direction_sentence)."""
+    core = inter[~inter.volume_adjusted]
+    sii = core[core.outcome == 'log SII']
+    ba = core[core.outcome == 'KDM-BA advancement']
+    name = {'IV': 'intradaily variability', 'IS': 'interdaily stability',
+            'RA': 'relative amplitude'}
+    if len(sii):
+        sig = sii[sii.interaction_p < 0.05]
+        if len(sig) == 0:
+            sii_s = (f'are non-significant for all three metrics (P \u2265 '
+                     f'{sii.interaction_p.min():.3f}; Supplementary Table S5b)')
+        else:
+            sii_s = ('are significant for '
+                     + ', '.join(name[e] for e in sig.exposure)
+                     + ' and non-significant for the other metric(s) '
+                       '(Supplementary Table S5b)')
+    else:
+        sii_s = 'are reported in Supplementary Table S5b'
+    def join(items):
+        return ' and '.join(items) if len(items) <= 2 else ', '.join(items[:-1]) + ' and ' + items[-1]
+    sup = ba[ba.interaction_p < 0.05]
+    unsup = ba[ba.interaction_p >= 0.05]
+    support = []
+    if len(sup):
+        pmax = sup.interaction_p.max()
+        support.append(f'The interaction is supported for {join([name[e] for e in sup.exposure])} '
+                       + ('(both ' if len(sup) == 2 else '(all ' if len(sup) > 2 else '(')
+                       + (f'P < 0.001)' if pmax < 0.001 else f'P \u2264 {pmax:.3f})'))
+    for _, r in unsup.iterrows():
+        support.append(f'for {name[r.exposure]} the estimate is {r.interaction_beta:+.3f} '
+                       f'(95% CI {r.interaction_lo:.3f} to {r.interaction_hi:.3f}; P = {r.interaction_p:.3f}) and no age trend is claimed')
+    support_s = '; '.join(support) + '.' if support else ''
+    # direction, only for the metrics whose interaction is supported
+    groups = {'changes sign across the age range': [],
+              'keeps its direction and strengthens with age': [],
+              'keeps its direction and weakens with age': []}
+    for _, r in sup.iterrows():
+        lo, hi = r.SLOPE_LO_beta, r.SLOPE_HI_beta
+        if np.sign(lo) != np.sign(hi) and lo != 0 and hi != 0:
+            groups['changes sign across the age range'].append(name[r.exposure])
+        elif abs(hi) >= abs(lo):
+            groups['keeps its direction and strengthens with age'].append(name[r.exposure])
+        else:
+            groups['keeps its direction and weakens with age'].append(name[r.exposure])
+    parts = []
+    for behaviour, metrics in groups.items():
+        if metrics:
+            verb = behaviour if len(metrics) == 1 else behaviour.replace('changes', 'change').replace('keeps', 'keep').replace('strengthens', 'strengthen').replace('weakens', 'weaken').replace('its', 'their')
+            parts.append(join(metrics) + ' ' + verb)
+    direction_s = ('; '.join(parts).capitalize() + '.') if parts else ''
+    for _, r in unsup.iterrows():
+        signs = {np.sign(r.SLOPE_LO_beta), np.sign(r.SLOPE_MID_beta), np.sign(r.SLOPE_HI_beta)}
+        same = 'the same sign' if len(signs) == 1 else 'mixed signs'
+        direction_s += (f' The simple slopes for {name[r.exposure]} have {same} at the three ages '
+                        f'({r.SLOPE_LO_beta:+.3f}, {r.SLOPE_MID_beta:+.3f}, {r.SLOPE_HI_beta:+.3f}).')
+    return sii_s, support_s, direction_s.strip()
+
+
+def moderation_notes(inter, est=None):
+    """Table 3 notes: the shared notes plus the interaction and simple-slope
+    definitions. `est` (parsed estimates) supplies the STDYX-versus-common-scale
+    contrast for the example; without it the example is omitted."""
+    sii_s, support_s, direction_s = moderation_facts(inter)
+    example = ''
+    core = inter[(~inter.volume_adjusted) & (inter.outcome == 'KDM-BA advancement') & (inter.exposure == 'RA')]
+    if est is not None and len(core):
+        sx = est[(est.model == core.iloc[0].model) & (est.solution == 'STDYX') & (est.parameter == 'RA_AGE')]
+        if len(sx):
+            example = (f' (Mplus STDYX rescales the product term by its own standard deviation and is not '
+                       f'used here; it would give {sx.iloc[0].estimate:.3f} rather than '
+                       f'{core.iloc[0].interaction_beta:.3f} for relative amplitude.)')
     missing = [k for k in SHARED_NOTES if k not in MAIN_NOTES]
     if missing:
         raise KeyError(f'SHARED_NOTES names no longer in MAIN_NOTES: {missing}')
     keep = [MAIN_NOTES[k] for k in SHARED_NOTES
             if MAIN_NOTES[k] != 'PROPORTION_MEDIATED_NOTES']
     return keep + [
-        'The interaction term is the change in the rhythm-to-biological-age '
-        'coefficient per 1 s.d. of age. Simple slopes are that coefficient '
+        'Scale of this table: the rhythm metric, age and biological-age '
+        'advancement were z-standardised on the reference sample (adults aged '
+        '20 and over in the depressive-symptom analytic universe; script 9) '
+        'before the product term was formed, and every coefficient is from the '
+        'unstandardised solution on that common scale, so the interaction '
+        'term is the change in the rhythm-to-biological-age coefficient per '
+        '1 reference s.d. of age and equals the difference between adjacent '
+        'simple slopes.' + example + ' Simple slopes are the coefficient '
         'evaluated at one standard deviation below the mean age, at the mean, '
-        'and one standard deviation above, within the same model.',
+        'and one standard deviation above, within the same model. Coefficients '
+        'are not STDYX values and are not comparable with Table 2.',
         'The dependent variable is biological-age advancement because that '
         'is the leg carrying the indirect associations. The corresponding '
         'rhythm-by-age interactions on log SII, estimated under the same '
-        'complex-survey specification, are non-significant for all three '
-        'metrics (interaction beta -0.015 to 0.024, P >= 0.125; '
-        'Supplementary Table S5b), and no rhythm-SII association appears '
-        'within any age band (Supplementary Table S8). The absence of the '
-        'index from this table reflects that null, not an untested '
-        'assumption.',
+        f'complex-survey specification, {sii_s}; the weighted least-squares '
+        'version by age band is in Supplementary Table S8.',
         'These models are fitted on all adults with biological-age '
         'advancement observed, not within the three analysis cells of '
         'Table 2. Biological-age advancement is their only dependent '
         'variable, so full-information estimation recovers nothing and the '
         'sample is the set in whom it was measured.',
-        'A significant interaction means the association changes with age. '
-        'Whether it changes direction is a separate question, answered by the '
-        'simple slopes: intradaily variability crosses zero, while interdaily '
-        'stability and relative amplitude keep their sign and strengthen.',
+        f'{support_s} A supported interaction means the association changes '
+        'with age; whether it changes direction is a separate question, '
+        f'answered by the simple slopes. {direction_s}'.strip(),
         'Supplementary Table S8 and Supplementary Fig. S1 give the same '
         'moderation estimated by survey-weighted least squares within four '
-        'age bands, which localises the crossing that these linear '
-        'interactions can only bracket.',
+        'age bands, which these linear interactions can only bracket.',
     ]
 
 
@@ -526,12 +628,13 @@ def proportion_notes(effects, holm, props):
         'design; the ratio is not the fraction of an effect that the measure '
         'mediates, which is why the column is not named "proportion '
         'mediated".',
-        f'The ratio is suppressed and reported as not estimable under '
-        f'any of three conditions: the total effect is not distinguishable '
-        f'from zero, the indirect effect is not, or the two have opposite '
-        f'signs. In each case the ratio has no interpretation (for example '
-        f'a negative ratio against a null total effect). {n_sup} of '
-        f'{len(props)} ratios are suppressed.',
+        f'The ratio is always computable; it is withheld and shown as '
+        f'"Not reported" under any of three conditions set in advance: the '
+        f'total effect is not distinguishable from zero, the indirect effect '
+        f'is not, or the two have opposite signs. In each case the ratio has '
+        f'no interpretation (for example a negative ratio against a null '
+        f'total effect). {n_sup} of {len(props)} ratios are withheld on '
+        f'this rule.',
         'Suppression is a property of the ratio alone.' + trap
         + ' Read this column together with the total and indirect rows above '
           'it, never on its own.',
@@ -560,7 +663,7 @@ def cell_scales():
     if not ANALYTIC.exists():
         return None
     d = pd.read_csv(ANALYTIC, low_memory=False)
-    d = d[d.RIDAGEYR >= 18].copy()
+    d = d[d.RIDAGEYR >= ADULT_MIN_AGE].copy()
     dpq = [f'DPQ{i:03d}' for i in [10, 20, 30, 40, 50, 60, 70, 80, 90]]
     d['PHQ9'] = d[dpq].replace({7: np.nan, 9: np.nan}).sum(axis=1, min_count=9)
     # Cognition indicators, z-scored within ages 60+, are needed before the
@@ -568,7 +671,7 @@ def cell_scales():
     elig = d.RIDAGEYR >= 60
     for _src, _dst in [('memory_score', 'MEM_Z'), ('fluency_score', 'FLUEN_Z'),
                        ('speed_score', 'SPEED_Z')]:
-        _raw = d[_src].replace(0, np.nan)
+        _raw = d[_src]          # scores of 0 are valid results and are kept
         _s = _raw[elig].dropna()
         d[_dst] = np.where(elig, (_raw - _s.mean()) / _s.std(), np.nan)
 
@@ -588,7 +691,7 @@ def cell_scales():
         mu = np.average(v, weights=w)
         return float(np.sqrt(np.average((v - mu) ** 2, weights=w)))
 
-    cells = [('PHQ-9, 18-59', sem[sem.RIDAGEYR < 60]),
+    cells = [(f'PHQ-9, {age_label(YOUNG)}', sem[sem.RIDAGEYR < OLD_MIN_AGE]),
              ('PHQ-9, 60+', sem[sem.RIDAGEYR >= 60]),
              ('cognition, 60+', sem_cog)]
     rows = []
@@ -606,7 +709,7 @@ def cell_scales():
     return pd.DataFrame(rows)
 
 
-def write_main(paths, effects, holm, props, inter):
+def write_main(paths, effects, holm, props, inter, est=None):
     """Write one workbook and one CSV per main-text table, named by TABNUM."""
     sc = cell_scales()
     notes = main_notes(effects, holm, props)
@@ -629,7 +732,7 @@ def write_main(paths, effects, holm, props, inter):
         m.to_excel(xw, sheet_name='Table 3', index=False)
         if sc is not None:
             sc.to_excel(xw, sheet_name='Scale', index=False)
-        pd.DataFrame({'Notes': moderation_notes()}).to_excel(
+        pd.DataFrame({'Notes': moderation_notes(inter, est)}).to_excel(
             xw, sheet_name='Notes', index=False)
         _autofit(xw)
     m.to_csv(out.with_suffix('.csv'), index=False)
@@ -649,9 +752,9 @@ def write_main(paths, effects, holm, props, inter):
 
 # Supplementary tables
 # "Analysis" column labels by model role, for S3, S4 and S6. Age-unstratified
-# models are labelled secondary rather than sensitivity: they pool ages 18+
-# instead of stratifying, which averages opposing age-specific associations,
-# so they do not corroborate the primary result.
+# models are labelled secondary rather than sensitivity: they pool all adults
+# instead of stratifying, so they answer a different question from the
+# primary age-cell models and do not corroborate them.
 ANALYSIS = {
     'primary': 'Primary',
     'reporting: unadjusted': 'Unadjusted counterpart of the primary model (no covariates, same participants)',
@@ -933,12 +1036,11 @@ SUPP_NOTES = [
     'assumed.',
 
     # Secondary and sensitivity models
-    'Depression models labelled 18+ pool the full adult sample rather than '
-    'stratifying by age. The 18-59 and 60+ cells were adopted as primary '
-    'after the pooled analysis returned a null that proved to be two '
-    'opposing age-specific associations cancelling. The pooled models are '
-    'reported here because that cancellation is the reason for stratifying, '
-    'not because they corroborate the primary result.',
+    f'Depression models labelled {age_label(POOLED)} pool the full adult sample rather than '
+    f'stratifying by age. The {age_label(YOUNG)} and {age_label(OLD)} cells are the primary '
+    'analysis; the pooled models are reported so that the effect of age '
+    'stratification can be read directly, not because they corroborate the '
+    'primary result.',
     'IV_Q and RA_Q are quintile-coded versions of the corresponding rhythm '
     'metric: the observed values are cut at their own quintiles within adults '
     'and scored 1 to 5, then entered as a single linear term. Cut-points are '
@@ -966,9 +1068,9 @@ def write_supp(paths, effects, holm, info, inter):
         table_supp_all_paths(paths).to_excel(xw, sheet_name='Supp Table S3 all paths', index=False)
         table_supp_all_effects(effects, holm).to_excel(
             xw, 'Supp Table S4 all effects', index=False)
-        table_main_moderation(inter).to_excel(xw, sheet_name='Supp Table S5 moderation', index=False)
+        table_main_moderation(inter, include_volume=True).to_excel(xw, sheet_name='Supp Table S5 moderation', index=False)
         if (inter.outcome == 'log SII').any():
-            table_main_moderation(inter, outcome='log SII').to_excel(
+            table_main_moderation(inter, outcome='log SII', include_volume=True).to_excel(
                 xw, sheet_name='Supp Table S5b moderation SII', index=False)
         table_supp_fit(info).to_excel(xw, sheet_name='Supp Table S6 model fit', index=False)
         sel = metric_selection()
@@ -1108,11 +1210,16 @@ def write_supp_unadjusted(paths, effects, holm):
 
 # Figures
 def fig1_specificity(paths):
-    """Supp Fig S5: a1 for each rhythm metric and cell, core against volume-adjusted covariates."""
+    """Supp Fig S5: the a1 path (rhythm -> KDM-BA advancement) for each rhythm
+    metric, in each of the three structural models, core against
+    volume-adjusted covariates."""
     d = paths[(paths.family == 'mediation') & (paths.path == 'a1')
               & (~paths.is_duplicate)]
-    fig, axes = plt.subplots(1, 3, figsize=(W2, 55 * MM), sharex=True)
+    fig, axes = plt.subplots(1, 3, figsize=(W2, 62 * MM), sharex=True)
     src = []
+    model_title = {('PHQ-9', YOUNG): f'Depressive-symptom model,\n{age_label(YOUNG)} years',
+                   ('PHQ-9', OLD): f'Depressive-symptom model,\n{age_label(OLD)} years',
+                   ('cognition', OLD): f'Cognitive model,\n{age_label(OLD)} years'}
     for ax, (outcome, cell) in zip(axes, CELLS):
         sub = d[(d.outcome == outcome) & (d.age_cell == cell)]
         y, yt, yl = 0, [], []
@@ -1128,8 +1235,8 @@ def fig1_specificity(paths):
                 col = EXP_COL[exp]
                 ax.errorbar(r.beta, y + off,
                             xerr=[[r.beta - r.ci_lo], [r.ci_hi - r.beta]],
-                            fmt=mk, ms=3, color=col, mfc=col if sig else 'white',
-                            ecolor=col, elinewidth=0.7, capsize=1.5, mew=0.7)
+                            fmt=mk, ms=3.4, color=col, mfc=col if sig else 'white',
+                            ecolor=col, elinewidth=0.9, capsize=1.8, mew=0.9)
                 src.append(dict(panel=f'{outcome}, {age_label(cell)}', metric=exp,
                                 volume_adjusted=vol, beta=r.beta, ci_lo=r.ci_lo,
                                 ci_hi=r.ci_hi, p=r.p, n=int(r.n)))
@@ -1137,83 +1244,157 @@ def fig1_specificity(paths):
         ax.axvline(0, color='0.4', lw=0.5, ls=(0, (3, 2)))
         ax.set_yticks(yt); ax.set_yticklabels(yl)
         ax.set_ylim(y + 0.5, 0.55)
-        ax.set_title(f'{outcome}, {age_label(cell)}',
+        ax.set_title(model_title[(outcome, cell)],
                      color=DEP if outcome == 'PHQ-9' else COG, pad=3)
-        ax.set_xlabel(r'β, rhythm $\rightarrow$ biological-age advancement')
+        ax.set_xlabel('Rhythm\u2013KDM-BA advancement\nassociation (\u03b2)')
     axes[0].set_ylabel('Rhythm metric')
-    h = [Line2D([], [], marker='o', ls='', color='0.35', ms=3, label='Core covariates'),
-         Line2D([], [], marker='s', ls='', color='0.35', ms=3, label='+ activity volume'),
-         Line2D([], [], marker='o', ls='', mfc='white', mec=GREY, color=GREY, ms=3,
-                label='P ≥ 0.05')]
+    h = [Line2D([], [], marker='o', ls='', color='0.35', ms=3.4, label='Core covariates'),
+         Line2D([], [], marker='s', ls='', color='0.35', ms=3.4,
+                label='Core covariates + activity volume'),
+         Line2D([], [], marker='o', ls='', mfc='white', mec=GREY, color=GREY, ms=3.4,
+                label='P \u2265 0.05')]
     fig.legend(handles=h, loc='lower center', ncol=3, frameon=False,
-               bbox_to_anchor=(0.5, -0.08))
+               bbox_to_anchor=(0.5, -0.10))
     fig.tight_layout()
-    cap = ['Supplementary Fig. S5 | Rhythm-to-biological-age association, core against volume-adjusted covariates.',
-           'Points are STDYX standardised coefficients; bars are 95% confidence '
-           'intervals from complex-survey SEM.',
-           'Hue identifies the metric throughout; open markers indicate '
-           'P ≥ 0.05.',
-           'Circles adjust for core covariates; squares add total daily activity '
-           'volume. Both use the same sample, so the two are directly comparable.']
+    for ax, letter in zip(axes, 'abc'):
+        fig.text(ax.get_position().x0 - 0.03, 0.99, letter, ha='right', va='top',
+                 fontsize=10, fontweight='bold')
+    cap = ['Supplementary Fig. S5 | Rhythm-to-biological-age association, core '
+           'against volume-adjusted covariates.',
+           'All three panels show the same path, the association of each rhythm '
+           'metric with KDM biological-age advancement (a1), as estimated inside '
+           'each of the three structural models: a, the depressive-symptom model, '
+           f'adults aged {age_label(YOUNG)} years; b, the depressive-symptom model, '
+           f'{age_label(OLD)} years; c, the cognitive model, {age_label(OLD)} years. '
+           'They are not associations of the rhythm metric with depressive symptoms '
+           'or cognition.',
+           'Points are Mplus STDYX coefficients, standardized within each model; '
+           'bars are 95% delta-method confidence intervals; open markers indicate '
+           'P \u2265 0.05. Intervals and P values are not adjusted for multiple '
+           'comparisons. Hue identifies the metric.',
+           'Circles adjust for core covariates (age, sex, body mass index, '
+           'education, accelerometer wear time, sleep duration); squares add '
+           'total daily activity volume. Both use the same participants. '
+           'Estimates are in Supplementary Table S3.']
     return save_fig(fig, FIGNUM['rhythm_to_ba'], pd.DataFrame(src), cap)
 
 
+def reference_age():
+    """Mean and s.d. of age in the standardisation reference sample (adults
+    aged 20+ in the depressive-symptom analytic universe), read from the
+    stage-9 manifest so that the ages quoted on Fig. 4 are the ones the
+    product term was built with. None if the manifest is absent."""
+    f = BASE / 'data' / 'mplus' / 'nhanes_sem_vars.txt'
+    if not f.exists():
+        return None
+    m = re.search(r'^#\s+AGE\s+source = RIDAGEYR\s+mean =\s+([\d.]+)\s+sd =\s+([\d.]+)',
+                  f.read_text(), re.M)
+    return (float(m.group(1)), float(m.group(2))) if m else None
+
+
 def fig2_moderation(inter):
-    """Fig 3: simple slopes of the rhythm-to-biological-age association at -1 s.d., mean and +1 s.d. of age."""
-    fig, axes = plt.subplots(1, 2, figsize=(W2, 55 * MM), sharey=True)
+    """Fig 4: simple slopes of the rhythm-to-biological-age association at -1 s.d., mean and +1 s.d. of age.
+
+    One point with its 95% confidence interval at each of the three ages at
+    which the slope was estimated (the model gives intervals at those ages
+    only); the connecting line is a visual guide, not an interval."""
+    fig, axes = plt.subplots(1, 2, figsize=(W2, 62 * MM), sharey=True)
     src = []
+    keys = ['SLOPE_LO', 'SLOPE_MID', 'SLOPE_HI']
+    xs = np.array([-1.0, 0.0, 1.0])
+    # metrics are dodged slightly so that the intervals do not overprint
+    dodge = {e: o for e, o in zip(EXPOSURES, np.linspace(-0.09, 0.09, len(EXPOSURES)))}
+    ref = reference_age()
     for ax, vol in zip(axes, (False, True)):
         blk = inter[(inter.volume_adjusted.astype(bool) == vol)
                     & (inter.outcome == 'KDM-BA advancement')].copy()
         blk['_o'] = blk.exposure.map({e: i for i, e in enumerate(EXPOSURES)})
         blk = blk.sort_values('_o')
         for _, r in blk.iterrows():
-            keys = ['SLOPE_LO', 'SLOPE_MID', 'SLOPE_HI']
             ys = np.array([r.get(f'{k}_beta', np.nan) for k in keys], float)
             lo = np.array([r.get(f'{k}_lo', np.nan) for k in keys], float)
             hi = np.array([r.get(f'{k}_hi', np.nan) for k in keys], float)
-            xs = np.array([-1.0, 0.0, 1.0])
             ok = np.isfinite(ys)
             if not ok.any():
                 continue
             c = EXP_COL[r.exposure]
-            ax.plot(xs[ok], ys[ok], '-o', color=c, ms=3, lw=1.0, label=r.exposure)
-            b = np.isfinite(lo) & np.isfinite(hi)
-            if b.sum() >= 2:
-                ax.fill_between(xs[b], lo[b], hi[b], color=c, alpha=0.12, lw=0)
-            for k, x in zip(keys, xs):
+            x = xs + dodge[r.exposure]
+            ax.plot(x[ok], ys[ok], '-', color=c, lw=0.8, alpha=0.8, zorder=2)
+            b = ok & np.isfinite(lo) & np.isfinite(hi)
+            ax.errorbar(x[b], ys[b], yerr=[ys[b] - lo[b], hi[b] - ys[b]], fmt='o',
+                        color=c, mfc=c, ecolor=c, ms=3.6, elinewidth=0.9,
+                        capsize=2.2, mew=0.9, label=r.exposure, zorder=3)
+            for k, xv in zip(keys, xs):
                 src.append(dict(panel='+ activity volume' if vol else 'core covariates',
                                 metric=r.exposure, age_point=k.replace('SLOPE_', ''),
-                                age_sd=x, beta=r.get(f'{k}_beta'),
+                                age_sd=xv,
+                                age_years=(ref[0] + xv * ref[1]) if ref else np.nan,
+                                b=r.get(f'{k}_beta'),
                                 ci_lo=r.get(f'{k}_lo'), ci_hi=r.get(f'{k}_hi'),
-                                p=r.get(f'{k}_p'), n=int(r.n)))
-        ax.axhline(0, color='0.4', lw=0.5, ls=(0, (3, 2)))
+                                p=r.get(f'{k}_p'), interaction_b=r.interaction_beta,
+                                interaction_p=r.interaction_p, n=int(r.n)))
+        ax.axhline(0, color='0.4', lw=0.5, ls=(0, (3, 2)), zorder=1)
         ax.set_xticks([-1, 0, 1])
-        ax.set_xticklabels(['−1 s.d.', 'Mean', '+1 s.d.'])
+        if ref:
+            ax.set_xticklabels([f'\u22121 s.d.\n({ref[0] - ref[1]:.0f} y)',
+                                f'Mean\n({ref[0]:.0f} y)',
+                                f'+1 s.d.\n({ref[0] + ref[1]:.0f} y)'])
+        else:
+            ax.set_xticklabels(['\u22121 s.d.', 'Mean', '+1 s.d.'])
+        ax.set_xlim(-1.45, 1.45)
         ax.set_xlabel('Age')
         ax.set_title('+ activity volume' if vol else 'Core covariates', pad=3,
-                     loc='left', fontsize=6.5)
-    # Two-line y label fits the axis height; the legend sits lower left, where
-    # the slopes leave empty space.
-    axes[0].set_ylabel('β, rhythm →\nbiological-age advancement')
-    axes[1].legend(frameon=False, loc='lower left', handlelength=1.2)
+                     loc='left')
+    axes[0].set_ylabel('Association with KDM-BA advancement, b')
+    axes[1].legend(frameon=False, loc='lower left', handlelength=1.4,
+                   handletextpad=0.6)
     fig.tight_layout()
-    for ax, letter in zip(axes, 'AB'):
-        fig.text(ax.get_position().x0 - 0.045, 0.98, letter,
-                 ha='left', va='top', fontsize=8, fontweight='bold')
-    cap = ['Fig. 3 | Age moderation of the rhythm-to-biological-age association.',
+    for ax, letter in zip(axes, 'ab'):
+        fig.text(ax.get_position().x0 - 0.045, 0.985, letter,
+                 ha='left', va='top', fontsize=10, fontweight='bold')
+    sii_s, support_s, direction_s = moderation_facts(inter)
+    ba = inter[inter.outcome == 'KDM-BA advancement']
+    core, volb = ba[~ba.volume_adjusted.astype(bool)], ba[ba.volume_adjusted.astype(bool)]
+    name = {'IV': 'intradaily variability', 'IS': 'interdaily stability',
+            'RA': 'relative amplitude'}
+
+    def fmt_inter(r):
+        p = 'P < 0.001' if r.interaction_p < 0.001 else f'P = {r.interaction_p:.3f}'
+        return (f'{name[r.exposure]} {r.interaction_beta:+.3f} '
+                f'(95% CI {r.interaction_lo:.3f} to {r.interaction_hi:.3f}; {p})')
+    vol_s = ('With activity volume added, the interaction estimates are '
+             + '; '.join(fmt_inter(r) for _, r in volb.sort_values('exposure', key=lambda s: s.map({e: i for i, e in enumerate(EXPOSURES)})).iterrows())
+             + '.') if len(volb) else ''
+    ages_s = (f' (approximately {ref[0] - ref[1]:.0f}, {ref[0]:.0f} and {ref[0] + ref[1]:.0f} '
+              'years in the reference sample)') if ref else ''
+    n_s = '; '.join(f'{int(n):,} ({", ".join(sorted(g.exposure))})'
+                    for n, g in core.groupby('n'))
+    spline_s = ('Tests of the age interaction with a flexible (natural-spline) '
+                'functional form are separate models, reported in Supplementary Table 21.'
+                if (SUPP / 'SuppTableS21_P1_FunctionalForm.xlsx').exists() else '')
+    cap = ['Fig. 4 | Associations of rest-activity rhythm metrics with KDM-BA '
+           'advancement at selected ages.',
+           'Points are the simple slopes of the linear age-interaction models '
+           '(Table 3) at one standard deviation below the mean age, at the mean '
+           f'and one standard deviation above{ages_s}; vertical bars are 95% '
+           'confidence intervals, estimated at those three ages only; the '
+           'connecting lines are visual guides.',
+           'Coefficients (b) are from the unstandardised solution on the common '
+           'reference-standardised scale: the rhythm metric, age and '
+           'biological-age advancement were z-standardised on the reference '
+           'sample before the product term was formed. They are not STDYX '
+           'values and are not comparable with Table 2.',
+           'a, models adjusted for age, sex, body mass index, education, '
+           'accelerometer wear time and sleep duration; b, additionally adjusted '
+           'for total daily activity volume.',
+           support_s, vol_s, direction_s,
            'The corresponding interactions with log SII as the dependent '
-           'variable, under the same complex-survey specification, are '
-           'non-significant for all three metrics (Supplementary Table S5b), '
-           'so only the biological-age models are shown.',
-           'Lines are simple slopes at one standard deviation below the mean age, '
-           'at the mean, and one standard deviation above; shading is the 95% '
-           'confidence interval.',
-           'Intradaily variability changes sign across the age range; interdaily '
-           'stability and relative amplitude keep their direction and strengthen.',
-           # Sample sizes are read from the interaction table.
-           'n = ' + ', '.join(f'{int(n):,} ({", ".join(sorted(g.exposure))})'
-                              for n, g in inter.groupby('n')) + '.']
+           f'variable, under the same complex-survey specification, {sii_s}.',
+           spline_s,
+           f'n = {n_s}.',
+           'KDM-BA, Klemera-Doubal biological age; RA, relative amplitude; IS, '
+           'interdaily stability; IV, intradaily variability.']
+    cap = [c for c in cap if c]
     return save_fig(fig, FIGNUM['age_moderation'], pd.DataFrame(src), cap)
 
 
@@ -1225,20 +1406,21 @@ MED_NAME = {'BA_ADV': 'KDM biological-age advancement',
 def fig_dissociation(paths, holm):
     """Fig 2: a 2x2 grid of a-paths (top row) and indirect associations (bottom row) by biological measure.
 
-    Columns are the measure (KDM-BA left, log SII right). Panels A/B facet by
+    Columns are the measure (KDM-BA left, log SII right). Panels a/b facet by
     age and draw the depression-model a-paths; the cognition-model estimates
-    of the same paths at 60+ agree to within 0.001. Panels C/D facet by
-    outcome cell. Hue is the rhythm metric. Markers in A/B are solid; in C/D
-    open markers mean Holm-adjusted P >= 0.05.
+    of the same paths at 60+ agree to within 0.001. Panels c/d facet by
+    outcome cell. Hue is the rhythm metric. Open markers mean P >= 0.05:
+    unadjusted P in a/b (structural paths, the rule of Fig. 3), Holm-adjusted
+    P in c/d (Holm within each model, across its two indirect associations).
     """
     METRICS = EXPOSURES
     MET_LAB = {'RA': 'RA', 'IS': 'IS', 'IV': 'IV'}
-    AGES = [('18-59', 'Aged 18–59'), ('60+', 'Aged 60 and over')]
-    CELLS3 = [('PHQ-9', '18-59', 'PHQ-9, 18–59'),
-              ('PHQ-9', '60+', 'PHQ-9, ≥60'),
-              ('cognition', '60+', 'Cognition, ≥60')]
+    AGES = [(YOUNG, f'Aged {age_label(YOUNG)}'), (OLD, f'Aged {OLD_MIN_AGE} and over')]
+    CELLS3 = [('PHQ-9', YOUNG, f'PHQ-9, {age_label(YOUNG)}'),
+              ('PHQ-9', OLD, f'PHQ-9, {age_label(OLD)}'),
+              ('cognition', OLD, f'Cognition, {age_label(OLD)}')]
 
-    fig = plt.figure(figsize=(W2, 120 * MM))
+    fig = plt.figure(figsize=(W2, 128 * MM))
     gs = fig.add_gridspec(2, 2, height_ratios=[6.2, 8.8], hspace=0.42,
                           wspace=0.08)
     axA = fig.add_subplot(gs[0, 0]); axB = fig.add_subplot(gs[0, 1], sharey=axA)
@@ -1252,16 +1434,17 @@ def fig_dissociation(paths, holm):
         y = 0
         for cell, cell_lab in AGES:
             ax.text(0.01, -y + 0.62, cell_lab, transform=ax.get_yaxis_transform(),
-                    fontsize=5.5, color='0.35', va='bottom')
+                    fontsize=7, color='0.35', va='bottom')
             for exp in METRICS:
                 r = primary(paths, outcome='PHQ-9', age_cell=cell,
                             exposure=exp, path=key)
                 if r is None:
                     continue
                 c = EXP_COL[exp]
+                keep = r.p < 0.05          # fill encodes unadjusted P, as in Fig. 3
                 ax.errorbar(r.beta, -y, xerr=[[r.beta - r.ci_lo], [r.ci_hi - r.beta]],
-                            fmt='o', ms=3, color=c, mfc=c, ecolor=c,
-                            elinewidth=0.7, capsize=1.5, mew=0.7)
+                            fmt='o', ms=3.4, color=c, mfc=c if keep else 'white',
+                            ecolor=c, elinewidth=0.9, capsize=1.8, mew=0.9)
                 yt.append(-y); yl.append(MET_LAB[exp])
                 tot += 1; sig += int(r.p < 0.05)
                 src.append(dict(panel=panel, group=cell_lab, metric=exp,
@@ -1273,12 +1456,11 @@ def fig_dissociation(paths, holm):
         ax.set_yticks(yt); ax.set_yticklabels(yl)
         ax.set_ylim(min(yt) - 0.7, 1.0)
         ax.set_xlabel(r'Standardized a-path coefficient, $\beta$')
-        ax.set_title(f'Associations with {med_name}', pad=3, loc='left',
-                     fontsize=6.5)
+        ax.set_title(f'Associations with {med_name}', pad=3, loc='left')
         n_sig[panel] = (sig, tot)
 
-    draw_apath(axA, 'a1', 'KDM-BA advancement', 'A')
-    draw_apath(axB, 'a2', 'log SII', 'B')
+    draw_apath(axA, 'a1', 'KDM-BA advancement', 'a')
+    draw_apath(axB, 'a2', 'log SII', 'b')
 
     # Bottom row: indirect associations, faceted by outcome cell.
     def draw_indirect(ax, med, med_name, panel):
@@ -1287,7 +1469,7 @@ def fig_dissociation(paths, holm):
         y = 0
         for outcome, cell, cell_lab in CELLS3:
             ax.text(0.01, -y + 0.62, cell_lab, transform=ax.get_yaxis_transform(),
-                    fontsize=5.5, color='0.35', va='bottom')
+                    fontsize=7, color='0.35', va='bottom')
             for exp in METRICS:
                 h = primary(holm, outcome=outcome, age_cell=cell,
                             exposure=exp, via=med)
@@ -1297,8 +1479,8 @@ def fig_dissociation(paths, holm):
                 keep = h.p_holm < 0.05
                 ax.errorbar(h.estimate, -y,
                             xerr=[[h.estimate - h.ci_lo], [h.ci_hi - h.estimate]],
-                            fmt='o', ms=3, color=c, mfc=c if keep else 'white',
-                            ecolor=c, elinewidth=0.7, capsize=1.5, mew=0.7)
+                            fmt='o', ms=3.4, color=c, mfc=c if keep else 'white',
+                            ecolor=c, elinewidth=0.9, capsize=1.8, mew=0.9)
                 yt.append(-y); yl.append(MET_LAB[exp])
                 tot += 1; sig += int(keep)
                 src.append(dict(panel=panel, group=cell_lab, metric=exp,
@@ -1309,13 +1491,12 @@ def fig_dissociation(paths, holm):
         ax.axvline(0, color='0.4', lw=0.5, ls=(0, (3, 2)))
         ax.set_yticks(yt); ax.set_yticklabels(yl)
         ax.set_ylim(min(yt) - 0.7, 1.0)
-        ax.set_xlabel(r'Standardized indirect effect, $\beta_{indirect}$')
-        ax.set_title(f'Indirect associations through {med_name}', pad=3,
-                     loc='left', fontsize=6.5)
+        ax.set_xlabel(r'Standardized indirect association, $\beta_{indirect}$')
+        ax.set_title(f'Indirect via {med_name}', pad=3, loc='left')
         n_sig[panel] = (sig, tot)
 
-    draw_indirect(axC, 'BA_ADV', 'KDM-BA advancement', 'C')
-    draw_indirect(axD, 'SII_LOG', 'log SII', 'D')
+    draw_indirect(axC, 'BA_ADV', 'KDM-BA advancement', 'c')
+    draw_indirect(axD, 'SII_LOG', 'log SII', 'd')
 
     for ax in (axB, axD):
         plt.setp(ax.get_yticklabels(), visible=False)
@@ -1326,47 +1507,38 @@ def fig_dissociation(paths, holm):
         for ax in pair:
             ax.set_xlim(lo, hi)
 
-    h = [Line2D([], [], marker='o', ls='', color=EXP_COL[e], ms=3,
+    h = [Line2D([], [], marker='o', ls='', color=EXP_COL[e], ms=3.4,
                 label={'RA': 'Relative amplitude (RA)',
                        'IS': 'Interdaily stability (IS)',
                        'IV': 'Intradaily variability (IV)'}[e])
          for e in METRICS]
     h.append(Line2D([], [], marker='o', ls='', mfc='white', mec='#555555',
-                    color='#555555', ms=3,
-                    label='open (C, D) = Holm-adjusted P ≥ 0.05'))
-    fig.legend(handles=h, loc='lower center', ncol=4, frameon=False,
-               bbox_to_anchor=(0.5, -0.03), fontsize=5.5)
+                    color='#555555', ms=3.4,
+                    label='open = P \u2265 0.05 (a, b unadjusted; c, d Holm-adjusted)'))
+    fig.legend(handles=h, loc='lower center', ncol=2, frameon=False,
+               bbox_to_anchor=(0.5, -0.06), columnspacing=2.5)
     fig.tight_layout()
-    for ax, letter in zip((axA, axB, axC, axD), 'ABCD'):
+    for ax, letter in zip((axA, axB, axC, axD), 'abcd'):
         fig.text(ax.get_position().x0 - 0.055, ax.get_position().y1 + 0.012,
-                 letter, ha='left', va='bottom', fontsize=9, fontweight='bold')
+                 letter, ha='left', va='bottom', fontsize=10, fontweight='bold')
 
-    (sa, ta), (sb, tb) = n_sig['A'], n_sig['B']
-    (sc, tc), (sd, td) = n_sig['C'], n_sig['D']
-    cap = ['Fig. 2 | Rest-activity rhythm associations with candidate '
-           'biological pathways.',
-           'A, B, associations of the three rest-activity rhythm metrics with '
-           'KDM biological-age advancement (A) and log SII (B), by age group. '
-           'C, D, indirect associations with depressive symptoms and cognitive '
-           'function through biological-age advancement (C) and log SII (D).',
-           'Because associations with the biological measures are age-specific '
-           'rather than outcome-specific, panels A and B are organised by age '
-           'group, whereas the indirect associations in panels C and D have an '
-           'outcome by construction and are organised by outcome cell.',
-           'Points are STDYX standardised coefficients from complex-survey '
-           'structural equation models; bars are 95% delta-method confidence '
-           'intervals. Hue identifies the rhythm metric throughout.',
-           'A and B draw the depression-model a-paths; the cognition-model '
-           'estimates of the same paths at 60+ agree to within 0.001 '
-           '(Supplementary Table S3). Markers in A and B are solid, with the '
-           'confidence interval carrying the uncertainty. In C and D, open '
-           'markers indicate Holm-adjusted P >= 0.05, the criterion used for '
-           'inference on indirect effects.',
-           f'The a-path is significant in {sa} of {ta} estimates for '
-           f'biological age against {sb} of {tb} for log SII; the indirect '
-           f'association survives Holm adjustment in {sc} of {tc} against '
-           f'{sd} of {td}.',
-           'The sign of an indirect effect is the product of the '
+    cap = ['Fig. 2 | Rest-activity rhythm associations with the two candidate '
+           'biological measures and the indirect associations through them.',
+           'a, b, associations of the three rest-activity rhythm metrics with '
+           'KDM-BA advancement (a) and log SII (b), by age group, from the '
+           'depressive-symptom models; the cognition-model estimates of the '
+           'same paths at 60 years and over agree to within 0.001 '
+           '(Supplementary Table S3). c, d, indirect associations with '
+           'depressive symptoms and cognitive function through KDM-BA '
+           'advancement (c) and log SII (d), by outcome cell.',
+           'Points are STDYX standardised coefficients from the core '
+           'complex-survey structural equation models; bars are 95% '
+           'delta-method confidence intervals, which are not '
+           'multiplicity-adjusted. Hue identifies the rhythm metric throughout.',
+           'Open markers indicate P \u2265 0.05: unadjusted P in a and b, '
+           'Holm-adjusted P in c and d, where the adjustment is applied within '
+           'each model to its two indirect associations.',
+           'The sign of an indirect association is the product of the '
            'rhythm-to-measure and measure-to-outcome paths, so it need not '
            'match the a-path: two negative paths give a positive indirect '
            'association, one of each gives a negative one.',
@@ -1377,74 +1549,109 @@ def fig_dissociation(paths, holm):
     return save_fig(fig, FIGNUM['dissociation'], pd.DataFrame(src), cap)
 
 
-def fig3_paths(paths, effects):
-    """Fig 4: full path decomposition for every rhythm metric across the three cells."""
-    fig, axes = plt.subplots(1, 3, figsize=(W2, 78 * MM), sharex=True)
+def fig3_paths(paths, effects, holm):
+    """Fig 3: full path decomposition for every rhythm metric across the three cells.
+
+    Rows: the four structural paths, the direct association, the two
+    indirect associations (one per biological measure) and the total.
+    Fill encodes P < 0.05: unadjusted for the structural paths, the direct and
+    the total association; Holm-adjusted (within each model, across its two
+    indirect associations) for the two indirect rows, as in Fig. 2."""
+    fig, axes = plt.subplots(1, 3, figsize=(W2, 92 * MM), sharex=True)
     src = []
-    labels = {'a1': r'a$_1$ rhythm $\rightarrow$ BA',
-              'b1': r'b$_1$ BA $\rightarrow$ outcome',
-              'a2': r'a$_2$ rhythm $\rightarrow$ SII',
-              'b2': r'b$_2$ SII $\rightarrow$ outcome',
-              'c_prime': "c′ direct"}
+    labels = {'a1': r'a$_1$  rhythm $\rightarrow$ KDM-BA advancement',
+              'b1': r'b$_1$  KDM-BA advancement $\rightarrow$ outcome',
+              'a2': r'a$_2$  rhythm $\rightarrow$ log SII',
+              'b2': r'b$_2$  log SII $\rightarrow$ outcome',
+              'c_prime': "c\u2032  direct association"}
     order = ['a1', 'b1', 'a2', 'b2', 'c_prime']
-    terms = [(k, labels[k], 'o') for k in order] + \
-            [('indirect', 'Indirect via BA', 'D'), ('total', 'Total', 'D')]
+    terms = [(k, labels[k], 'o', None) for k in order] + \
+            [('indirect', 'Indirect via KDM-BA advancement', 'D', 'BA_ADV'),
+             ('indirect', 'Indirect via log SII', 'D', 'SII_LOG'),
+             ('total', 'Total association', 'D', None)]
     # one row per term, three metrics dodged within the row
-    offs = {e: o for e, o in zip(EXPOSURES, np.linspace(0.26, -0.26, len(EXPOSURES)))}
+    offs = {e: o for e, o in zip(EXPOSURES, np.linspace(0.27, -0.27, len(EXPOSURES)))}
 
     for ax, (outcome, cell) in zip(axes, CELLS):
-        # Alternating pale bands separate the term rows.
+        # Alternating pale bands separate the rows; they carry no meaning.
         for y in range(len(terms)):
             if y % 2 == 0:
-                ax.axhspan(-y - 0.5, -y + 0.5, color='#FBF6E2', lw=0, zorder=0)
+                ax.axhspan(-y - 0.5, -y + 0.5, color='#F4F4F4', lw=0, zorder=0)
         yt, yl = [], []
-        for y, (key, lab, mk) in enumerate(terms):
+        for y, (key, lab, mk, via) in enumerate(terms):
             for exp in EXPOSURES:
                 if mk == 'o':
                     r = primary(paths, outcome=outcome, age_cell=cell,
                                 exposure=exp, path=key)
                     if r is None:
                         continue
-                    est, lo, hi, pv = r.beta, r.ci_lo, r.ci_hi, r.p
+                    est, lo, hi, pv, p_adj, rule = r.beta, r.ci_lo, r.ci_hi, r.p, np.nan, 'unadjusted'
+                elif key == 'indirect':
+                    h = primary(holm, outcome=outcome, age_cell=cell,
+                                exposure=exp, via=via)
+                    if h is None:
+                        continue
+                    est, lo, hi, pv, p_adj, rule = (h.estimate, h.ci_lo, h.ci_hi,
+                                                    h.p, h.p_holm, 'Holm-adjusted')
                 else:
                     x = primary(effects, outcome=outcome, age_cell=cell,
-                                exposure=exp, effect=key,
-                                via='BA_ADV' if key == 'indirect' else None)
+                                exposure=exp, effect=key, via=None)
                     if x is None:
                         continue
-                    est, lo, hi, pv = x.estimate, x.ci_lo, x.ci_hi, x.p
-                sig = pv < 0.05
+                    est, lo, hi, pv, p_adj, rule = x.estimate, x.ci_lo, x.ci_hi, x.p, np.nan, 'unadjusted'
+                sig = (p_adj if rule == 'Holm-adjusted' else pv) < 0.05
                 col = EXP_COL[exp]      # hue = metric; fill = significance
                 ax.errorbar(est, -y + offs[exp],
-                            xerr=[[est - lo], [hi - est]], fmt=mk, ms=2.8,
+                            xerr=[[est - lo], [hi - est]], fmt=mk, ms=3.4,
                             color=col, mfc=col if sig else 'white', ecolor=col,
-                            elinewidth=0.7, capsize=1.5, mew=0.7)
+                            elinewidth=0.9, capsize=1.8, mew=0.9, zorder=3)
                 src.append(dict(panel=f'{outcome}, {age_label(cell)}', metric=exp, term=lab,
-                                beta=est, ci_lo=lo, ci_hi=hi, p=pv))
+                                beta=est, ci_lo=lo, ci_hi=hi, p=pv, p_holm=p_adj,
+                                fill_rule=rule, filled=bool(sig)))
             yt.append(-y); yl.append(lab)
-        ax.axvline(0, color='0.4', lw=0.5, ls=(0, (3, 2)))
+        ax.axvline(0, color='0.4', lw=0.5, ls=(0, (3, 2)), zorder=1)
         ax.set_yticks(yt); ax.set_yticklabels(yl if ax is axes[0] else [''] * len(yt))
         ax.set_ylim(-len(terms) + 0.4, 0.6)
         ax.set_title(f'{outcome}, {age_label(cell)}',
-                     color=DEP if outcome == 'PHQ-9' else COG, pad=3)
-        ax.set_xlabel('β (95% CI)')
-    h = [Line2D([], [], marker='o', ls='', color=EXP_COL[e], ms=3,
+                     color=DEP if outcome == 'PHQ-9' else COG, pad=4)
+        ax.set_xlabel(r'Standardized coefficient, $\beta$')
+    h = [Line2D([], [], marker='o', ls='', color=EXP_COL[e], ms=3.4,
                 label=f'{EXP_NAME[e]} ({e})') for e in EXPOSURES]
     h += [Line2D([], [], marker='o', ls='', mfc='white', mec='#555555',
-                 color='#555555', ms=3, label='open = P ≥ 0.05')]
+                 color='#555555', ms=3.4,
+                 label='open = P \u2265 0.05 (indirect rows: Holm-adjusted)')]
     fig.legend(handles=h, loc='lower center', ncol=4, frameon=False,
-               bbox_to_anchor=(0.5, -0.06))
+               bbox_to_anchor=(0.5, -0.05))
     fig.tight_layout()
-    cap = ['Fig. 4 | Full decomposition for each rest-activity rhythm metric.',
-           'Circles are structural paths, diamonds are effect decompositions; '
-           'bars are 95% confidence intervals from complex-survey SEM.',
-           'Hue identifies the metric throughout; open markers indicate '
-           'P ≥ 0.05.',
-           'Estimates are adjusted for core covariates only; the '
-           'volume-adjusted counterparts are in the supplementary tables.',
-           'Alternating shading distinguishes the rows and carries no other '
-           'meaning.',
-           'BA, biological-age advancement; SII, systemic immune-inflammation index.']
+    for ax, letter in zip(axes, 'abc'):
+        fig.text(ax.get_position().x0 - (0.19 if ax is axes[0] else 0.02),
+                 ax.get_position().y1 + 0.03, letter, ha='left', va='bottom',
+                 fontsize=10, fontweight='bold')
+    cap = ['Fig. 3 | Path decomposition for each rest-activity rhythm metric.',
+           'a, depressive symptoms (PHQ-9) among adults aged 20-59 years; b, '
+           'depressive symptoms among adults aged 60 years and over; c, cognitive '
+           'function among adults aged 60 years and over.',
+           'Rows: the association of the rhythm metric with KDM-BA advancement '
+           '(a1) and with log SII (a2); the associations of KDM-BA advancement '
+           '(b1) and log SII (b2) with the outcome; the direct association '
+           'conditional on both biological measures (c\u2032); the indirect '
+           'association through each biological measure; and the total '
+           'association.',
+           'Points are STDYX standardised coefficients from the core '
+           'complex-survey structural equation models (circles, structural '
+           'paths; diamonds, effect decompositions); bars are 95% delta-method '
+           'confidence intervals, which are not multiplicity-adjusted. Hue '
+           'identifies the metric throughout.',
+           'Open markers indicate P \u2265 0.05: unadjusted P for the structural '
+           'paths, the direct and the total association; Holm-adjusted P for '
+           'the two indirect rows, where the adjustment is applied within each '
+           'model to its two indirect associations (the rule of Fig. 2).',
+           'Estimates are adjusted for core covariates; the volume-adjusted '
+           'counterparts are in Supplementary Tables S3-S4.',
+           'Alternating shading separates the rows and carries no other meaning.',
+           'KDM-BA, Klemera-Doubal biological age; SII, systemic '
+           'immune-inflammation index; RA, relative amplitude; IS, interdaily '
+           'stability; IV, intradaily variability.']
     return save_fig(fig, FIGNUM['decomposition'], pd.DataFrame(src), cap)
 
 
@@ -1463,11 +1670,11 @@ def main():
         return 1
 
     q = write_qc(est, eff, info, paths, effects, inter, holm, props)
-    mains = write_main(paths, effects, holm, props, inter)
+    mains = write_main(paths, effects, holm, props, inter, est)
     s = write_supp(paths, effects, holm, info, inter)
     s20 = write_supp_unadjusted(paths, effects, holm)
     figs = [fig1_specificity(paths), fig_dissociation(paths, holm),
-            fig3_paths(paths, effects), fig2_moderation(inter)]
+            fig3_paths(paths, effects, holm), fig2_moderation(inter)]
 
     checks = qc_checks(est, info, paths, effects, holm, props)
     review = checks[checks.status == 'REVIEW']

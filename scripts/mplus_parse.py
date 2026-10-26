@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+from population import YOUNG, OLD, POOLED
 
 # Section cuts
 def _slice(text, start, end=None):
@@ -39,9 +40,12 @@ def _rows(block):
                     r'New/Additional Parameters|Thresholds)$', s):
             section = s
             continue
-        m = re.match(r'^([A-Za-z][\w.]*)\s+((?:-?\d+\.\d+\s*)+)$', s)
+        # Mplus prints a field it cannot fit as asterisks (e.g. Est./S.E. of
+        # a residual variance fixed at 1 with S.E. 0.000); read it as NaN
+        # rather than dropping the row.
+        m = re.match(r'^([A-Za-z][\w.]*)\s+((?:(?:-?\d+\.\d+|\*+)\s*)+)$', s)
         if m and section:
-            vals = [float(v) for v in m.group(2).split()]
+            vals = [float('nan') if v.startswith('*') else float(v) for v in m.group(2).split()]
             yield section, m.group(1), vals
 
 
@@ -140,11 +144,16 @@ def parse_effects(text, model):
             seen.add(med)
             c = re.search(rf'Specific indirect \d+\s*\n\s+\w+\s*\n\s+{med}\s*\n\s+\w+\s+'
                           + r'\s+'.join([r'(-?[\d.]+)'] * 7), cb)
+            # The CI pattern above has no name groups, so its seven groups are
+            # the seven columns Lower .5%, Lower 2.5%, Lower 5%, Estimate,
+            # Upper 5%, Upper 2.5%, Upper .5%: the 95% interval is groups 2 and
+            # 6, as for the total and direct effects. (Groups 3 and 7 -- the
+            # lower 90% and upper 99% bounds -- were read here until 2026-10.)
             out.append(dict(model=model, solution=sol, effect='indirect', via=med,
                             estimate=float(m.group(4)), se=float(m.group(5)),
                             p=float(m.group(7)),
-                            ci_lo=float(c.group(3)) if c else None,
-                            ci_hi=float(c.group(7)) if c else None))
+                            ci_lo=float(c.group(2)) if c else None,
+                            ci_hi=float(c.group(6)) if c else None))
     return out
 
 
@@ -210,10 +219,25 @@ def parse_file(path):
             parse_info(text, model))
 
 
+def is_stage19_output(path):
+    """True for an output of the stage-19 sensitivity models kept in the same
+    directory as the 51 baseline models: p1_* (functional form, age
+    interaction) and *_edud (education indicators). They belong to
+    Supplementary Table S21, which p1_report.py writes from verified outputs
+    (mplus_output_qc.read_verified); they are not part of the stage-10 display
+    set and label_models() does not decode them."""
+    stem = Path(path).stem
+    return stem.startswith('p1_') or stem.endswith('_edud')
+
+
 def parse_dir(d='.', pattern='*.out'):
     est, eff, info = [], [], []
     for f in sorted(Path(d).glob(pattern)):
         if f.stem.endswith(('_tech3', '_results')):
+            continue
+        # A run rejected by mplus_run.py is kept as <model>.failed.out and is
+        # never read; the stage-19 outputs have their own report.
+        if f.name.endswith('.failed.out') or is_stage19_output(f):
             continue
         e, x, i = parse_file(f)
         est += e
@@ -238,19 +262,19 @@ def label_models(info):
             rest = rest.replace('_crude', '')
             d.update(family='sensitivity' if crude else 'mediation',
                      outcome={'dep': 'PHQ-9', 'cog': 'cognition'}[out],
-                     age_cell={'young': '18-59', 'old': '60+'}[cell],
+                     age_cell={'young': YOUNG, 'old': OLD}[cell],
                      exposure=rest.replace('_vol', '').upper(),
                      volume_adjusted=rest.endswith('_vol'),
                      role='reporting: unadjusted' if crude else 'primary')
         elif stem.startswith('x_age_sii_'):
             d.update(family='interaction', outcome='log SII',
-                     age_cell='18+',
+                     age_cell=POOLED,
                      exposure=stem.replace('x_age_sii_', '').replace('_vol', '').upper(),
                      volume_adjusted=stem.endswith('_vol'),
                      role='age moderation, log SII')
         elif stem.startswith('x_age_'):
             d.update(family='interaction', outcome='KDM-BA advancement',
-                     age_cell='18+',
+                     age_cell=POOLED,
                      exposure=stem.replace('x_age_', '').replace('_vol', '').upper(),
                      volume_adjusted=stem.endswith('_vol'), role='central test')
         elif stem.endswith('_trimmed'):
@@ -258,7 +282,7 @@ def label_models(info):
             # M1/S2/S3 branch.
             out = 'cognition' if 'cognition' in stem else 'PHQ-9'
             d.update(family='sensitivity', outcome=out,
-                     age_cell='60+' if out == 'cognition' else '18+',
+                     age_cell=OLD if out == 'cognition' else POOLED,
                      exposure='IV', volume_adjusted=False,
                      role='sensitivity: KDM-BA tails trimmed')
         elif stem.startswith(('M1', 'S2', 'S3')):
@@ -271,7 +295,7 @@ def label_models(info):
             # S2 codes the exposure in quintiles (sensitivity).
             fam = 'sensitivity' if stem.startswith('S2') else 'secondary'
             d.update(family=fam, outcome=out,
-                     age_cell='60+' if out == 'cognition' else '18+',
+                     age_cell=OLD if out == 'cognition' else POOLED,
                      exposure=exp, volume_adjusted=False,
                      role={'M1': 'age-unstratified',
                            'S2': 'sensitivity: quintile exposure',

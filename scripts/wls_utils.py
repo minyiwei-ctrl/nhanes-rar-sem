@@ -241,6 +241,21 @@ def wls_fit(X, y, w=None, se='hc3', add_const=True):
 
 
 # Natural cubic spline basis
+def ns_knots(x, df=4):
+    """The (interior knots, boundary knots) that ns_basis(x, df) uses by default.
+
+    Fix them once on the fitting sample and pass them back to ns_basis for any
+    prediction grid, so that the grid is evaluated on the basis the
+    coefficients were estimated on (recomputing the knots on sample + grid
+    gives a different basis)."""
+    x = np.asarray(x, dtype=float)
+    b_lo, b_hi = np.quantile(x, [0.05, 0.95])
+    k = max(df - 1, 1)
+    q = np.linspace(0.0, 1.0, k + 2)[1:-1]
+    knots = np.quantile(x, np.clip(q, 0.06, 0.94))
+    return knots, (b_lo - 1e-6, b_hi + 1e-6)
+
+
 def ns_basis(x, df=4, knots=None, boundary=None):
     """Natural cubic spline basis with df columns including the linear term (Hastie et al., ESL Ex. 5.4).
 
@@ -252,12 +267,9 @@ def ns_basis(x, df=4, knots=None, boundary=None):
     x = np.asarray(x, dtype=float)
     if knots is None:
         # use 5%–95% range as boundary knots (mgcv-style)
-        b_lo, b_hi = np.quantile(x, [0.05, 0.95])
-        k = max(df - 1, 1)
-        q = np.linspace(0.0, 1.0, k + 2)[1:-1]
-        knots = np.quantile(x, np.clip(q, 0.06, 0.94))
+        knots, _bd = ns_knots(x, df)
         if boundary is None:
-            boundary = (b_lo - 1e-6, b_hi + 1e-6)
+            boundary = _bd
     if boundary is None:
         boundary = (np.min(x) - 1e-6, np.max(x) + 1e-6)
     # Drop knots that coincide with boundaries

@@ -98,3 +98,60 @@ detects this from the estimates and downstream tables count them once.
 - Mplus deletes cases listwise on exogenous variables (exposure and
   covariates); FIML applies only to dependent variables. Roughly a quarter of
   adults are dropped, 79% of that because they have no accelerometry.
+
+## P1: functional form, age interaction and education coding (2026-10-19)
+
+`build_p1.py` writes `data/mplus/nhanes_sem_p1.dat` — `nhanes_sem.dat` plus
+the three non-linear natural-spline functions of raw RA and raw IV (knots
+fixed once on adults 20+: boundary 5th/95th percentiles, interior quartiles;
+z-scored on that sample), quintile indicators with common cut-points, and
+education indicators (DMDEDUC2 2–5 against less than 9th grade) — and 21
+inputs: `p1_{ra,iv}_{linear,spline,spline_age,spline_age_nl,quint,quint_age}`
+(dependent variable KDM-BA advancement, adults 20+, core covariates, with
+`MODEL TEST` for the design-corrected joint Wald tests; age products formed
+in `DEFINE`) and `m_*_edud` (the nine primary mediation models with the four
+education indicators). Run them with `python mplus_run.py 'p1_*.inp'` and
+`python mplus_run.py '*_edud.inp'` (stage 19, Step 2); `python ../p1_report.py`
+then writes Supplementary Table S21. `build_p1.py --check` verifies that every
+input's NAMES matches the data file.
+
+## Stage 19: the sensitivity sets and `mplus_run.py` (2026-10-20)
+
+Stage `19_sensitivity_mplus.ipynb` writes two more data files and three
+folders of inputs, all derived from the P1 file, with the model set of each
+fixed in a `plan.json` before anything is fitted (copies under
+`result/qc/freeze/`):
+
+| folder | written by | models | reads |
+|---|---|---|---|
+| `cycle_audit/` | `../build_cycle_audit.py` | 42 `adjusted_*` (a 2013–14 cycle indicator added to every structural regression of the 9 primary, 9 volume-adjusted, 6 age-interaction, 6 volume-adjusted age-interaction and 12 P1 models); 12 `cycleG_x_age_*` / `cycleH_x_age_*` (cycle-specific age-interaction models); 18 `cycleG_m_*` / `cycleH_m_*` split-cycle full SEMs, generated for the record but **retired and not run** (eight carried design-rank warnings in the F1 freeze) | `nhanes_sem_cycle.dat` (P1 file + `CYCLE2`, 48 columns) |
+| `cycle_contrasts/` | `../build_cycle_contrasts.py` | 12 `cycle_diff_{young,old}_{ba_adv,sii_log}_{ra,is,iv}`: pooled single-outcome regressions in which the exposure, every covariate slope and the intercept differ by cycle; `MODEL TEST` on the exposure × cycle term (1 df) | `nhanes_sem_cycle.dat` |
+| `selection_audit/` | `../build_selection_audit.py` | 3 `cc_m_cog_old_*`: the primary cognition models restricted to participants with every modelled variable observed (`SUBPOPULATION = AGE60 EQ 1 AND CC_x EQ 1`) | `nhanes_sem_selection.dat` (P1 file + `CC_RA`, `CC_IS`, `CC_IV`) |
+
+`mplus_run.py` replaces `run_all.sh` for these models (and can run any
+input here). It runs one input at a time, accepts the output only when
+`mplus_output_qc.validate_output` passes, archives a previous output under
+`_previous_runs/`, keeps a rejected output as `.failed.out`, stops at the
+first failure, and writes a `.run.json` beside the input with the sha256 of
+the input, the data file and the output. The reports (`../p1_report.py`,
+`../freeze_sensitivity_report.py`) read outputs only through
+`mplus_output_qc.read_verified`, which re-checks those hashes, so a stale,
+edited or failed output cannot enter a table.
+
+```
+python mplus_run.py --record '*.inp'                 # bind the existing baseline outputs (no run)
+python mplus_run.py 'p1_*.inp'                       # 12
+python mplus_run.py '*_edud.inp'                     #  9
+python mplus_run.py 'cycle_audit/adjusted_*.inp'     # 42
+python mplus_run.py 'cycle_audit/cycle?_x_age_*.inp' # 12
+python mplus_run.py 'cycle_contrasts/*.inp'          # 12
+python mplus_run.py 'selection_audit/*.inp'          #  3
+```
+
+`--record` exists because the 51 baseline outputs of the unified re-run were
+produced by `run_all.sh`, which writes no record, while
+`freeze_sensitivity_report.py` reads each baseline through `read_verified`
+to compare it with its variants. It validates every existing output with
+the same `validate_output` gate and writes the record with
+`recorded_post_hoc = true` and the run date from the Mplus header; it runs
+nothing and alters no output.

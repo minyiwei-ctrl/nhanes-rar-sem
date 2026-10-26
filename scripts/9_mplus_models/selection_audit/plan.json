@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-10-20T18:01:42.006659+00:00",
+  "models": [
+    {
+      "model": "cc_m_cog_old_ra",
+      "base": "m_cog_old_ra",
+      "n_complete": 2407,
+      "input_sha256": "0df77871649f8e7e3a7e5a5fd269496dcdd88f88e0e3cfc3f4885e85fbb0fb5f"
+    },
+    {
+      "model": "cc_m_cog_old_is",
+      "base": "m_cog_old_is",
+      "n_complete": 2408,
+      "input_sha256": "8a745e26a7ed6e06ac4b147d0fd0493853dc7c4efc17fa44fc032b290fd64c75"
+    },
+    {
+      "model": "cc_m_cog_old_iv",
+      "base": "m_cog_old_iv",
+      "n_complete": 2408,
+      "input_sha256": "22828b8424b69a324be46c700e8af84f2dc7818c53cdf753a3bb5a44a901a132"
+    }
+  ],
+  "data_sha256": "21d7d97c987834f75f8a007d8cec38f5e68e2b80a0e6ac5c3a3401f306bad835",
+  "reason": "CFQ guidance calls for assessment of selection. Compare baseline FIML with fully observed cases for all three existing cognition models; preserve the exposure/outcome definitions, common scales, survey weights, design, and latent-factor orientation.",
+  "interpretation": [
+    "Weighted availability profiles describe observed selection; they do not establish MAR.",
+    "Complete-case refits are sensitivity analyses, not corrections for selection or substitutes for primary results.",
+    "No nonresponse weight is estimated from unobserved outcomes; no new model selected by significance.",
+    "Cognitive latent scales can vary by sample; compare both common-file coefficients and STDYX with this qualification."
+  ]
+}

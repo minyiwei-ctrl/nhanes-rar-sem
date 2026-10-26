@@ -30,12 +30,29 @@ LOCATIONS = [
 ]
 
 
+# Items whose producing script runs only after a further Mplus run; their
+# absence is reported, not treated as a defect, until that run is done.
+PENDING = {
+    'SuppTableS21_P1_FunctionalForm': 'written by p1_report.py after the P1 models '
+                                      '(9_mplus_models/build_p1.py) have been run in Mplus',
+    'SuppTableS22_CycleSensitivity': 'written by freeze_sensitivity_report.py after the '
+                                     'cycle_audit/ and cycle_contrasts/ models have been run '
+                                     'in Mplus (19_sensitivity_mplus.ipynb Step 2)',
+    'SuppTableS23_CognitiveSelection': 'written by freeze_sensitivity_report.py after the '
+                                       'selection_audit/ models have been run in Mplus '
+                                       '(19_sensitivity_mplus.ipynb Step 2)',
+}
+
+
 def script_sources():
     """{stem written -> [producing scripts]}, by scanning the code for filenames."""
     out = {}
     files = sorted(SCRIPTS.glob('*.ipynb')) + sorted(SCRIPTS.glob('*.py'))
     for f in files:
-        if f.name in ('display_map.py', 'verify_figures.py'):
+        # checkers and document builders mention display items without writing them
+        if f.name in ('display_map.py', 'verify_figures.py', 'manuscript_provenance.py', 'manuscript_numbers.py',
+                      'compare_with_archive.py', 'manuscript_stageC_edits.py', 'build_supplement_word.py',
+                      'build_supplementary_captions_data.py', 'build_supplementary_captions_word.py'):
             continue
         if f.suffix == '.ipynb':
             nb = json.loads(f.read_text())
@@ -49,7 +66,9 @@ def script_sources():
         # A filename inside a retirement block ('_superseded' or '.replace(_d'
         # within the next 400 characters) is a file the script moves away, not
         # one it writes.
-        for m in re.finditer(r"['\"]((?:Fig|SuppFig|Table|SuppTable)[\w\-]*)"
+        # The name may carry a directory prefix inside the literal
+        # ('result/supplementary/SuppTableS22_CycleSensitivity.xlsx').
+        for m in re.finditer(r"['\"](?:[\w\-./]+/)?((?:Fig|SuppFig|Table|SuppTable)[\w\-]*)"
                              r"(?:\.(?:pdf|png|csv|xlsx))?['\"]", code):
             window = code[m.start():m.start() + 400]
             if '_superseded' in window or '.replace(_d' in window:
@@ -58,6 +77,12 @@ def script_sources():
             # decision, not a filename.
             before = code[max(0, m.start() - 30):m.start()]
             if 'startswith' in before or 'endswith' in before:
+                continue
+            # A literal whose existence is tested ('...xlsx').exists() is read
+            # as a condition (a legend sentence, a conditional title), not
+            # written.
+            after = code[m.end():m.end() + 30]
+            if '.exists()' in after:
                 continue
             if m.group(1) in ('SuppFig', 'Fig', 'Table', 'SuppTable'):
                 continue
@@ -135,6 +160,9 @@ def build():
         if not re.match(r'^(Fig\d|SuppFig|Table\d|SuppTableS)', stem):
             continue
         if stem in on_disk or stem in retired:
+            continue
+        if stem in PENDING:
+            print(f'  (pending) {stem}: {PENDING[stem]}')
             continue
         problems.append(f'MISSING    {stem} — claimed by {", ".join(who)}, not on disk')
 

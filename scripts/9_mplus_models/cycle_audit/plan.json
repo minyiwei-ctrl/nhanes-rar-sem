@@ -1,0 +1,452 @@
+{
+  "created_utc": "2026-10-20T16:00:02.936586+00:00",
+  "baseline_preserved": true,
+  "models": [
+    {
+      "model": "adjusted_m_dep_young_ra",
+      "base": "m_dep_young_ra",
+      "variant": "adjusted",
+      "input_sha256": "c8ae97a968fbe694c473ded7cbbf39a808911a106f0b3cdf2eda60cd7b6f43d8"
+    },
+    {
+      "model": "adjusted_m_dep_young_is",
+      "base": "m_dep_young_is",
+      "variant": "adjusted",
+      "input_sha256": "d9da5084570589e4064c1d314ed8e390c92e851f7fcf93b407bd36098f9c81e4"
+    },
+    {
+      "model": "adjusted_m_dep_young_iv",
+      "base": "m_dep_young_iv",
+      "variant": "adjusted",
+      "input_sha256": "8f4f9d163a1343b2f4f5a5060d2a7f11698f6b736a980de5a090c4b35cedc25c"
+    },
+    {
+      "model": "adjusted_m_dep_old_ra",
+      "base": "m_dep_old_ra",
+      "variant": "adjusted",
+      "input_sha256": "abf848b346c93ac80a1ea9029fca35389d1293290ed5e3c67e8d87bf51dfa47a"
+    },
+    {
+      "model": "adjusted_m_dep_old_is",
+      "base": "m_dep_old_is",
+      "variant": "adjusted",
+      "input_sha256": "b7c1d710b887900e45ad07ea4c6d1d93940ff65a4ba68b56fcd145dbb24caed6"
+    },
+    {
+      "model": "adjusted_m_dep_old_iv",
+      "base": "m_dep_old_iv",
+      "variant": "adjusted",
+      "input_sha256": "33ce1899640251cd54b88fa6a8aa2f8e89446c5bded9b7e3ec9bb0fe431304db"
+    },
+    {
+      "model": "adjusted_m_cog_old_ra",
+      "base": "m_cog_old_ra",
+      "variant": "adjusted",
+      "input_sha256": "1207d4ea95ff7577bebb3b2de4801f99d444d15b8f8880fbf46b563dbe94c2c5"
+    },
+    {
+      "model": "adjusted_m_cog_old_is",
+      "base": "m_cog_old_is",
+      "variant": "adjusted",
+      "input_sha256": "ee41a7d01bb4eb25d6184e625bfe73cc88e2c167e30fca0d983a370a0dc53eb4"
+    },
+    {
+      "model": "adjusted_m_cog_old_iv",
+      "base": "m_cog_old_iv",
+      "variant": "adjusted",
+      "input_sha256": "0916aa2e31c7b9a1d08b7fd95359cb6e1bafadd44b43422a6431526966764258"
+    },
+    {
+      "model": "adjusted_m_dep_young_ra_vol",
+      "base": "m_dep_young_ra_vol",
+      "variant": "adjusted",
+      "input_sha256": "ac693aac03ecd97f9915c8a729c046adc2a75ea4d4ae0821f0034cb37da70478"
+    },
+    {
+      "model": "adjusted_m_dep_young_is_vol",
+      "base": "m_dep_young_is_vol",
+      "variant": "adjusted",
+      "input_sha256": "f0403d301fa4b1c854b8f00fc9f98c76c52074fd4b8856103ee783a3c2526bc9"
+    },
+    {
+      "model": "adjusted_m_dep_young_iv_vol",
+      "base": "m_dep_young_iv_vol",
+      "variant": "adjusted",
+      "input_sha256": "5dcc6a5641d4d33cf7c3fea732010f85ae91267e166f2186eaa3a4d8e1e55b4b"
+    },
+    {
+      "model": "adjusted_m_dep_old_ra_vol",
+      "base": "m_dep_old_ra_vol",
+      "variant": "adjusted",
+      "input_sha256": "f07d8251553b62056ee23838d5f037e12e2784f9ce2cf386226082e6295e32b5"
+    },
+    {
+      "model": "adjusted_m_dep_old_is_vol",
+      "base": "m_dep_old_is_vol",
+      "variant": "adjusted",
+      "input_sha256": "715364520cb7f75f4440f8171f6c53cee05fbe7bfef74689405e0577b821a41b"
+    },
+    {
+      "model": "adjusted_m_dep_old_iv_vol",
+      "base": "m_dep_old_iv_vol",
+      "variant": "adjusted",
+      "input_sha256": "6ca9ad67c4686bfb106237cef5dd981c141454377f87d37dbffdb470d17864a6"
+    },
+    {
+      "model": "adjusted_m_cog_old_ra_vol",
+      "base": "m_cog_old_ra_vol",
+      "variant": "adjusted",
+      "input_sha256": "d0551feba2d45c486cee86bfa51c17d02c1eea22dc58a74b5f5042b66ef02af6"
+    },
+    {
+      "model": "adjusted_m_cog_old_is_vol",
+      "base": "m_cog_old_is_vol",
+      "variant": "adjusted",
+      "input_sha256": "3643228fd7a2d6ccae7700d346a9fa2a389285a1ffab83f164f1a6f6c6f8753a"
+    },
+    {
+      "model": "adjusted_m_cog_old_iv_vol",
+      "base": "m_cog_old_iv_vol",
+      "variant": "adjusted",
+      "input_sha256": "c16a28d10ee505ce261b27123fed8ff46e695e258a6ce82b5fa3e9a382c8deb9"
+    },
+    {
+      "model": "adjusted_x_age_ra",
+      "base": "x_age_ra",
+      "variant": "adjusted",
+      "input_sha256": "0cd2d4f50a018a9435ceb3d21e3c076d06133c54821e7c5db958b973c07c8a3a"
+    },
+    {
+      "model": "adjusted_x_age_is",
+      "base": "x_age_is",
+      "variant": "adjusted",
+      "input_sha256": "209e226c8874f19b9018eddb1e487d1725d804897c758ea3a4b5ea1214057123"
+    },
+    {
+      "model": "adjusted_x_age_iv",
+      "base": "x_age_iv",
+      "variant": "adjusted",
+      "input_sha256": "cd37002c5810097ae371caed191f16e5f16926245f03e923e1ed6c5072157197"
+    },
+    {
+      "model": "adjusted_x_age_sii_ra",
+      "base": "x_age_sii_ra",
+      "variant": "adjusted",
+      "input_sha256": "986adc9340e943a229edb64f42b6b8a7615b63ee139349ea3c16aa23b1162b99"
+    },
+    {
+      "model": "adjusted_x_age_sii_is",
+      "base": "x_age_sii_is",
+      "variant": "adjusted",
+      "input_sha256": "80788457737f45dd2dd5a81d6c9f8a0f36e0242a1693b0d80ea617195e0ac363"
+    },
+    {
+      "model": "adjusted_x_age_sii_iv",
+      "base": "x_age_sii_iv",
+      "variant": "adjusted",
+      "input_sha256": "1177f141705e39bec922a7343b37c2e70f6690a11c3cc9ccc302bbea65df7428"
+    },
+    {
+      "model": "adjusted_x_age_ra_vol",
+      "base": "x_age_ra_vol",
+      "variant": "adjusted",
+      "input_sha256": "41ee8efce7b82bba66755d29a9e0c531a06a62eba9570526e959720b0a030505"
+    },
+    {
+      "model": "adjusted_x_age_is_vol",
+      "base": "x_age_is_vol",
+      "variant": "adjusted",
+      "input_sha256": "e2545c594c18802a9f4893bdd6e95a8c4a89a7f26a78bf2f360ee545924b6dda"
+    },
+    {
+      "model": "adjusted_x_age_iv_vol",
+      "base": "x_age_iv_vol",
+      "variant": "adjusted",
+      "input_sha256": "58e5afa6dfea59177b49c0cb90c5235d7a5ab91c276731fac8677367a7ec26d0"
+    },
+    {
+      "model": "adjusted_x_age_sii_ra_vol",
+      "base": "x_age_sii_ra_vol",
+      "variant": "adjusted",
+      "input_sha256": "bda44d4699e1ba3434a8d91fd5be07ae5109a878912ecc24dbd6addbadc78346"
+    },
+    {
+      "model": "adjusted_x_age_sii_is_vol",
+      "base": "x_age_sii_is_vol",
+      "variant": "adjusted",
+      "input_sha256": "926443eb6a4a9de72a889c301b30b89ce7157fbea535912429490198d70d5d10"
+    },
+    {
+      "model": "adjusted_x_age_sii_iv_vol",
+      "base": "x_age_sii_iv_vol",
+      "variant": "adjusted",
+      "input_sha256": "ed39a02fc8a31244ae18f0841c1533e798d187eca762aa873beffa47c0ebd7ae"
+    },
+    {
+      "model": "adjusted_p1_ra_linear",
+      "base": "p1_ra_linear",
+      "variant": "adjusted",
+      "input_sha256": "6ac94d8559e6337ef7cf2ca8891f41a03016df527f49eeffd3f3b25d4b94f39c"
+    },
+    {
+      "model": "adjusted_p1_ra_spline",
+      "base": "p1_ra_spline",
+      "variant": "adjusted",
+      "input_sha256": "788ac2d7e580c9a5d65ba40bf24c45073611ab98f4579a6b8e4088f1d1923b92"
+    },
+    {
+      "model": "adjusted_p1_ra_spline_age",
+      "base": "p1_ra_spline_age",
+      "variant": "adjusted",
+      "input_sha256": "4d88f32efe1faf29cf07817707f77add38f7764ba21fab016ccb59413672bdb8"
+    },
+    {
+      "model": "adjusted_p1_ra_spline_age_nl",
+      "base": "p1_ra_spline_age_nl",
+      "variant": "adjusted",
+      "input_sha256": "4eabfa9ab21195f3cecee57f729ec6946c8de70d38c9df513a799ccbcd11d2c5"
+    },
+    {
+      "model": "adjusted_p1_ra_quint",
+      "base": "p1_ra_quint",
+      "variant": "adjusted",
+      "input_sha256": "c314f4022451948dd371244abdd064c2b1b0d8d3cef96f9435141b7033e5cd48"
+    },
+    {
+      "model": "adjusted_p1_ra_quint_age",
+      "base": "p1_ra_quint_age",
+      "variant": "adjusted",
+      "input_sha256": "d0251b9d57f87b78e2b61c659b4d8ee6df12abebea691f32c86a2fffa642bb2f"
+    },
+    {
+      "model": "adjusted_p1_iv_linear",
+      "base": "p1_iv_linear",
+      "variant": "adjusted",
+      "input_sha256": "0d70c66a525ac19b9aa2bad9385826b2fe46e80e6b7b78c263cd55b7aca79a05"
+    },
+    {
+      "model": "adjusted_p1_iv_spline",
+      "base": "p1_iv_spline",
+      "variant": "adjusted",
+      "input_sha256": "eba4d7488ccbb67f4b566a245453ef173311aa196654b8bbf8a0bbeef24c0321"
+    },
+    {
+      "model": "adjusted_p1_iv_spline_age",
+      "base": "p1_iv_spline_age",
+      "variant": "adjusted",
+      "input_sha256": "17c75a60ade4944c7d7cddd22a1e059037e97bfe05e6a3f573cfc51e01425a2a"
+    },
+    {
+      "model": "adjusted_p1_iv_spline_age_nl",
+      "base": "p1_iv_spline_age_nl",
+      "variant": "adjusted",
+      "input_sha256": "9323a202d635aa94c28f7ba664a987454f9720c7bd907c244a63c7b66a083851"
+    },
+    {
+      "model": "adjusted_p1_iv_quint",
+      "base": "p1_iv_quint",
+      "variant": "adjusted",
+      "input_sha256": "ac1237fd1c4e3647858f4a766a1f90ee527c62d4e1334eea39f3fc102bf2fa81"
+    },
+    {
+      "model": "adjusted_p1_iv_quint_age",
+      "base": "p1_iv_quint_age",
+      "variant": "adjusted",
+      "input_sha256": "15e90e73d0123aaaf889a2c70dec21f10af792c89b7cc424c4d9ee3caf47f784"
+    },
+    {
+      "model": "cycleG_m_dep_young_ra",
+      "base": "m_dep_young_ra",
+      "variant": "cycleG",
+      "input_sha256": "bfc3d7c8498ec5c4b2d6833d8cac4dcd0f13208029c3bfa88ca0e1ef5ddcd4c0"
+    },
+    {
+      "model": "cycleH_m_dep_young_ra",
+      "base": "m_dep_young_ra",
+      "variant": "cycleH",
+      "input_sha256": "9924d13a3d75f561642a9952c6e319b4978b5efc55422489d063581d4be1435e"
+    },
+    {
+      "model": "cycleG_m_dep_young_is",
+      "base": "m_dep_young_is",
+      "variant": "cycleG",
+      "input_sha256": "6188158a1e05d51f1ce2e80b87b3331dd1565489aab4a18e3be32b34dd85f094"
+    },
+    {
+      "model": "cycleH_m_dep_young_is",
+      "base": "m_dep_young_is",
+      "variant": "cycleH",
+      "input_sha256": "fd37d09543d2b59ffbee13f3e0bd5ac0349ea8bdccab7af9ccd32b8486122108"
+    },
+    {
+      "model": "cycleG_m_dep_young_iv",
+      "base": "m_dep_young_iv",
+      "variant": "cycleG",
+      "input_sha256": "40d9ac4860323c25f847999d94f444e89b44842e1c550a69abb5870308d350b6"
+    },
+    {
+      "model": "cycleH_m_dep_young_iv",
+      "base": "m_dep_young_iv",
+      "variant": "cycleH",
+      "input_sha256": "d491471be3d732efe3da5e5dbd5a00afa204df7c6f9eb44b7c6f64d953a9f987"
+    },
+    {
+      "model": "cycleG_m_dep_old_ra",
+      "base": "m_dep_old_ra",
+      "variant": "cycleG",
+      "input_sha256": "12a6e0346a2f103009871769d17c593c8c7cfa34948dee9baece4082f2a88e80"
+    },
+    {
+      "model": "cycleH_m_dep_old_ra",
+      "base": "m_dep_old_ra",
+      "variant": "cycleH",
+      "input_sha256": "7916b84e5d0e7a7c35d1f29b0e7f33cab395fbb6ea47b2318836ad58d4c1c89e"
+    },
+    {
+      "model": "cycleG_m_dep_old_is",
+      "base": "m_dep_old_is",
+      "variant": "cycleG",
+      "input_sha256": "b73ac7a03b015e445cf117c19c9f75de5e7c2f2f89d305bab6eaa726a48bfd92"
+    },
+    {
+      "model": "cycleH_m_dep_old_is",
+      "base": "m_dep_old_is",
+      "variant": "cycleH",
+      "input_sha256": "3d16bf2f2adf8f35d1d424aa35878369f6e3189aef7dc9e0e53d2e48f1b64e8a"
+    },
+    {
+      "model": "cycleG_m_dep_old_iv",
+      "base": "m_dep_old_iv",
+      "variant": "cycleG",
+      "input_sha256": "bf1bc31bcc0b677dcfc7ad26f27fa9cd8d63cd638a6ef0947650833b50417ad0"
+    },
+    {
+      "model": "cycleH_m_dep_old_iv",
+      "base": "m_dep_old_iv",
+      "variant": "cycleH",
+      "input_sha256": "3901d525305f5c5553bdce9620f9525eae8a7587ac8522688b8eea9d3fc09ce5"
+    },
+    {
+      "model": "cycleG_m_cog_old_ra",
+      "base": "m_cog_old_ra",
+      "variant": "cycleG",
+      "input_sha256": "8eacc54a5a0ecb24b1d104a5d353cf2d7387cd0ffa89dcc084bd55dd746cddd5"
+    },
+    {
+      "model": "cycleH_m_cog_old_ra",
+      "base": "m_cog_old_ra",
+      "variant": "cycleH",
+      "input_sha256": "1637c543ff7985c217449720c953b9eb0af6238225ec72da391d38b7827e4679"
+    },
+    {
+      "model": "cycleG_m_cog_old_is",
+      "base": "m_cog_old_is",
+      "variant": "cycleG",
+      "input_sha256": "a65fd810b960457b380e57880e5772da3d28e1a0e70bdc6c97eb2c4768771562"
+    },
+    {
+      "model": "cycleH_m_cog_old_is",
+      "base": "m_cog_old_is",
+      "variant": "cycleH",
+      "input_sha256": "73a294ecaedcbb3212f532df7204cf567b7f5b805588df9b22b9d62c36821f0d"
+    },
+    {
+      "model": "cycleG_m_cog_old_iv",
+      "base": "m_cog_old_iv",
+      "variant": "cycleG",
+      "input_sha256": "30fc78dbc167efee63e73445e39a22b7165d1ed9d31e1468bdb866fff53680de"
+    },
+    {
+      "model": "cycleH_m_cog_old_iv",
+      "base": "m_cog_old_iv",
+      "variant": "cycleH",
+      "input_sha256": "0a03c83a8f1d0aa4e143449d300e55d2c5fda352a8dff6b5c851a5c5f711e9ff"
+    },
+    {
+      "model": "cycleG_x_age_ra",
+      "base": "x_age_ra",
+      "variant": "cycleG",
+      "input_sha256": "232884f7a2dc55a2ee1c446b401ee2c77689596346922608cdea2cbe3e3dae94"
+    },
+    {
+      "model": "cycleH_x_age_ra",
+      "base": "x_age_ra",
+      "variant": "cycleH",
+      "input_sha256": "c42e714df63a6c674cc23f1106321e60799faf61a1b7c855d8ceec002face3ee"
+    },
+    {
+      "model": "cycleG_x_age_is",
+      "base": "x_age_is",
+      "variant": "cycleG",
+      "input_sha256": "8d96ec4fb0d3fcea7fd3f4cf6c6d826536d58c0fe9c324429fa8e0092035f594"
+    },
+    {
+      "model": "cycleH_x_age_is",
+      "base": "x_age_is",
+      "variant": "cycleH",
+      "input_sha256": "70d4c5622283c7d6a34f62a1337bf4a88b81dcb587142b55046ba1167f849ba0"
+    },
+    {
+      "model": "cycleG_x_age_iv",
+      "base": "x_age_iv",
+      "variant": "cycleG",
+      "input_sha256": "223974c7dc546bb63d2c0fa437e04d16e80275e14a990634aec08e21c5068e94"
+    },
+    {
+      "model": "cycleH_x_age_iv",
+      "base": "x_age_iv",
+      "variant": "cycleH",
+      "input_sha256": "172e3b5ae280bfb33d08cfdd75cbd196aba73e39b5bb1385f85254fa84a0a369"
+    },
+    {
+      "model": "cycleG_x_age_sii_ra",
+      "base": "x_age_sii_ra",
+      "variant": "cycleG",
+      "input_sha256": "3f3012124893469a0ab43249b5e90d6546699fd919b049a53e03c3b857fdc2c1"
+    },
+    {
+      "model": "cycleH_x_age_sii_ra",
+      "base": "x_age_sii_ra",
+      "variant": "cycleH",
+      "input_sha256": "4cf676c609eb510189ab52dcda0182286de4d554e06f02f891d560e870d1514f"
+    },
+    {
+      "model": "cycleG_x_age_sii_is",
+      "base": "x_age_sii_is",
+      "variant": "cycleG",
+      "input_sha256": "095c0f89b8ace6add5b299b384ad7719acbcad55048df48633cfe899756c35ea"
+    },
+    {
+      "model": "cycleH_x_age_sii_is",
+      "base": "x_age_sii_is",
+      "variant": "cycleH",
+      "input_sha256": "1ea16cc978e8a0721871921a0ba65f5894324d849789fdfce3ef5845e1b60780"
+    },
+    {
+      "model": "cycleG_x_age_sii_iv",
+      "base": "x_age_sii_iv",
+      "variant": "cycleG",
+      "input_sha256": "fe4e3a8973e67c437e07c6ea75fe81b23dcacd60b430cd0aa1d574b610b3bd5c"
+    },
+    {
+      "model": "cycleH_x_age_sii_iv",
+      "base": "x_age_sii_iv",
+      "variant": "cycleH",
+      "input_sha256": "a304afaf8e6773043aca21162c30142c6e0363f4e0a9a7a9d8d6521e7287b8cc"
+    }
+  ],
+  "n_adjusted": 42,
+  "n_by_cycle": 30,
+  "data_sha256": "35fb38c18a03f85ad5b898ce3a625291b0877627187ea2b1b9f43ace33e08bae",
+  "reason": "CDC CBC_H flags RDW/WBC instrument effects; both are used in internally calibrated KDM. Cycle is added to every structural regression while exposures, outcomes, scales, survey design, missingness and spline knots stay fixed. Cycle-specific variants retain the common data scales and use design subpopulations.",
+  "interpretation_rules": [
+    "Do not replace primary estimates or select variants by P value.",
+    "Compare estimates and uncertainty, not only significance categories.",
+    "Cycle-specific cognition effects are descriptive because factor measurement invariance is not established.",
+    "Between-cycle contrasts are restricted to biological-measure paths and age interactions on a common scale.",
+    "Use reported standard errors for independent-cycle contrasts; the cycles use distinct strata/PSUs.",
+    "Period adjustment does not identify or correct the actual within-2012 instrument transition; retain this limitation.",
+    "No activity-volume-adjusted flexible interactions or nonlinear full-path indirect effects are introduced by this audit."
+  ],
+  "input_format_fix": "NAMES variables, including CYCLE2, precede DEFINE-created products in USEVARIABLES; model set and hypotheses unchanged."
+}

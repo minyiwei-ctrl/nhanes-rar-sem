@@ -1,5 +1,5 @@
 TITLE:
-    RA x age on the a1 path (KDM-BA advancement), adults 18+
+    RA x age on the a1 path (KDM-BA advancement), adults 20+
 
 DATA:
     FILE = ../../data/mplus/nhanes_sem.dat;
@@ -9,13 +9,15 @@ VARIABLE:
         SEQN IV RA IS BA_ADV SII_LOG NLR_LOG OBJ_MVPA PHQ9
         COG_Z MEM_Z FLUEN_Z SPEED_Z
         AGE SEX BMI EDU WEAR_T SLEEP_H VOLUME AGE60
-        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU;
+        IV_AGE IS_AGE RA_AGE IV_Q WT4YR STRATUM PSU ADULT20;
 
     USEVARIABLES =
         RA RA_AGE BA_ADV
         AGE SEX BMI EDU WEAR_T SLEEP_H;
 
     MISSING = ALL(-9999);
+
+    SUBPOPULATION = ADULT20 EQ 1;
 
     IDVARIABLE = SEQN;
 
